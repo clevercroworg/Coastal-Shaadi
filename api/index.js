@@ -13,12 +13,14 @@ app.use(cors());
 app.use(express.json());
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://coastalshaadi_db_user:***REMOVED***@cluster0.jwwbkbc.mongodb.net/coastalshaadi?retryWrites=true&w=majority&appName=Cluster0';
+const JWT_SECRET = process.env.JWT_SECRET || '***REMOVED***';
+const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET || '***REMOVED***';
+const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY || '252667886888762';
+const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || 'dlc5axpxo';
 
 mongoose.connect(MONGODB_URI)
   .then(() => console.log('MongoDB Connected'))
   .catch(err => console.log('MongoDB Connection Error: ', err));
-
-const JWT_SECRET = process.env.JWT_SECRET || '***REMOVED***';
 
 app.post('/api/register', async (req, res) => {
   try {
@@ -124,7 +126,7 @@ import crypto from 'crypto';
 
 app.get('/api/cloudinary-signature', (req, res) => {
   const timestamp = Math.round(new Date().getTime() / 1000);
-  const apiSecret = '***REMOVED***'; // Keep secret on backend
+  const apiSecret = CLOUDINARY_API_SECRET;
   const { public_id } = req.query;
   
   let signatureStr = '';
@@ -135,7 +137,7 @@ app.get('/api/cloudinary-signature', (req, res) => {
   }
   
   const signature = crypto.createHash('sha1').update(signatureStr).digest('hex');
-  res.json({ timestamp, signature });
+  res.json({ timestamp, signature, apiKey: CLOUDINARY_API_KEY, cloudName: CLOUDINARY_CLOUD_NAME });
 });
 
 app.get('/api/members', async (req, res) => {

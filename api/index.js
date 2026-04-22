@@ -19,11 +19,11 @@ const JWT_SECRET = process.env.JWT_SECRET || '***REMOVED***';
 
 app.post('/api/register', async (req, res) => {
   try {
-    const { firstName, lastName, email, password, gender, dob, onBehalf, religion, caste } = req.body;
+    const { firstName, lastName, email, phone, password, gender, dob, onBehalf, religion, caste } = req.body;
     
-    let user = await User.findOne({ email });
+    let user = await User.findOne({ $or: [{ email }, { phone }] });
     if (user) {
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(400).json({ message: 'User with this email or phone already exists' });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -33,7 +33,7 @@ app.post('/api/register', async (req, res) => {
     const memberId = 'CS-' + Math.floor(10000000 + Math.random() * 90000000);
 
     user = new User({
-      firstName, lastName, email, password: hashedPassword,
+      firstName, lastName, email, phone, password: hashedPassword,
       gender, dob, onBehalf, religion, caste, memberId
     });
 
@@ -66,7 +66,26 @@ app.post('/api/login', async (req, res) => {
     const payload = { user: { id: user.id } };
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 
-    res.json({ token, user: { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email, religion: user.religion, caste: user.caste, memberId: user.memberId } });
+    res.json({ token, user: { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email, religion: user.religion, caste: user.caste, memberId: user.memberId, profileData: user.profileData, image: user.image } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.put('/api/profile', async (req, res) => {
+  try {
+    const { userId, profileData, image } = req.body;
+    if (!userId) return res.status(400).json({ message: 'User ID is required' });
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (profileData) user.profileData = { ...user.profileData, ...profileData };
+    if (image !== undefined) user.image = image;
+
+    await user.save();
+    res.json({ message: 'Profile updated successfully', user });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });

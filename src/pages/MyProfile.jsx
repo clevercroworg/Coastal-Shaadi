@@ -3,44 +3,54 @@ import DashboardNavbar from '../components/DashboardNavbar';
 import { User, Mail, Phone, MapPin, Briefcase, GraduationCap, Map, Camera, Pencil, X, Check, Heart, Calendar, Ruler, Utensils, Shield, Globe, BookOpen, Loader2 } from 'lucide-react';
 
 export default function MyProfile() {
-  const [profileImage, setProfileImage] = useState(null);
+  // Get user from local storage
+  const getUserData = () => {
+    try {
+      const stored = localStorage.getItem('userProfile');
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return null;
+  };
+
+  const userData = getUserData();
+  const [profileImage, setProfileImage] = useState(userData?.image || null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
 
   // Editable profile state
   const [profile, setProfile] = useState({
-    name: 'Rahul Shetty',
-    memberId: 'CS-2068045690',
+    name: userData ? `${userData.firstName} ${userData.lastName}` : 'Rahul Shetty',
+    memberId: userData?.memberId || 'CS-2068045690',
     memberType: 'Free',
-    email: 'rahul.shetty@gmail.com',
-    phone: '+91 9876543210',
-    city: 'Mangalore',
-    state: 'Karnataka',
-    country: 'India',
-    age: '28',
-    dob: '14-Aug-1995',
-    height: "5' 10\" (177 cm)",
-    maritalStatus: 'Never Married',
-    createdBy: 'Self',
-    diet: 'Non-Vegetarian',
-    disability: 'None',
-    religion: 'Hindu',
-    motherTongue: 'Tulu',
-    caste: 'Bunt',
-    subCaste: '-',
-    gothra: 'Not Specified',
-    education: 'B.E / B.Tech (Computer Science)',
-    profession: 'Senior Software Engineer',
-    company: 'Infosys Technologies',
-    employedIn: 'Private Sector (MNC)',
-    income: '₹ 15L - 25L',
-    workLocation: 'Bangalore, India',
-    aboutMe: 'I am a fun-loving person who values family traditions while embracing modern life. I enjoy traveling, reading, and exploring new cuisines. Looking for a like-minded partner who shares similar values and interests.',
-    partnerAge: '24 - 30 years',
-    partnerHeight: "5' 2\" - 5' 8\"",
-    partnerEducation: 'Graduate or above',
-    partnerProfession: 'Any',
-    partnerLocation: 'India / Abroad',
+    email: userData?.email || 'rahul.shetty@gmail.com',
+    phone: userData?.phone || '+91 9876543210',
+    city: userData?.profileData?.city || 'Mangalore',
+    state: userData?.profileData?.state || 'Karnataka',
+    country: userData?.profileData?.country || 'India',
+    age: userData?.profileData?.age || '28',
+    dob: userData?.dob || '14-Aug-1995',
+    height: userData?.profileData?.height || "5' 10\" (177 cm)",
+    maritalStatus: userData?.profileData?.maritalStatus || 'Never Married',
+    createdBy: userData?.onBehalf || 'Self',
+    diet: userData?.profileData?.diet || 'Non-Vegetarian',
+    disability: userData?.profileData?.disability || 'None',
+    religion: userData?.religion || 'Hindu',
+    motherTongue: userData?.profileData?.motherTongue || 'Tulu',
+    caste: userData?.caste || 'Bunt',
+    subCaste: userData?.profileData?.subCaste || '-',
+    gothra: userData?.profileData?.gothra || 'Not Specified',
+    education: userData?.profileData?.education || 'B.E / B.Tech (Computer Science)',
+    profession: userData?.profileData?.profession || 'Senior Software Engineer',
+    company: userData?.profileData?.company || 'Infosys Technologies',
+    employedIn: userData?.profileData?.employedIn || 'Private Sector (MNC)',
+    income: userData?.profileData?.income || '₹ 15L - 25L',
+    workLocation: userData?.profileData?.workLocation || 'Bangalore, India',
+    aboutMe: userData?.profileData?.aboutMe || 'I am a fun-loving person who values family traditions while embracing modern life.',
+    partnerAge: userData?.profileData?.partnerAge || '24 - 30 years',
+    partnerHeight: userData?.profileData?.partnerHeight || "5' 2\" - 5' 8\"",
+    partnerEducation: userData?.profileData?.partnerEducation || 'Graduate or above',
+    partnerProfession: userData?.profileData?.partnerProfession || 'Any',
+    partnerLocation: userData?.profileData?.partnerLocation || 'India / Abroad',
   });
 
   // Edit mode per section
@@ -57,10 +67,27 @@ export default function MyProfile() {
     setEditData({});
   };
 
-  const saveEdit = () => {
-    setProfile({ ...profile, ...editData });
+  const saveEdit = async () => {
+    const updatedProfile = { ...profile, ...editData };
+    setProfile(updatedProfile);
     setEditSection(null);
     setEditData({});
+
+    if (userData?.id) {
+      try {
+        await fetch('/api/profile', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: userData.id, profileData: editData })
+        });
+        
+        // Update local storage
+        const newUserData = { ...userData, profileData: { ...userData.profileData, ...editData } };
+        localStorage.setItem('userProfile', JSON.stringify(newUserData));
+      } catch (err) {
+        console.error('Failed to save to database', err);
+      }
+    }
   };
 
   const handleChange = (field, value) => {
@@ -97,6 +124,15 @@ export default function MyProfile() {
       const data = await response.json();
       if (data.secure_url) {
         setProfileImage(data.secure_url);
+        if (userData?.id) {
+          await fetch('/api/profile', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: userData.id, image: data.secure_url })
+          });
+          const newUserData = { ...userData, image: data.secure_url };
+          localStorage.setItem('userProfile', JSON.stringify(newUserData));
+        }
       } else {
         alert('Upload failed: ' + (data.error?.message || 'Unknown error'));
       }

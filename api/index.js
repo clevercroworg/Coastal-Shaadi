@@ -1,4 +1,7 @@
-import 'dotenv/config';
+if (process.env.NODE_ENV !== 'production') {
+  const dotenv = await import('dotenv');
+  dotenv.config();
+}
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
@@ -20,8 +23,7 @@ const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY;
 const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
 
 if (!MONGODB_URI || !JWT_SECRET || !CLOUDINARY_API_SECRET || !CLOUDINARY_API_KEY || !CLOUDINARY_CLOUD_NAME) {
-  console.error('❌ Missing required environment variables. Check your .env file.');
-  process.exit(1);
+  console.error('❌ Missing required environment variables. Check your .env file or Vercel env settings.');
 }
 
 mongoose.connect(MONGODB_URI)

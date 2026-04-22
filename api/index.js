@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
@@ -12,11 +13,16 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://coastalshaadi_db_user:***REMOVED***@cluster0.jwwbkbc.mongodb.net/coastalshaadi?retryWrites=true&w=majority&appName=Cluster0';
-const JWT_SECRET = process.env.JWT_SECRET || '***REMOVED***';
-const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET || '***REMOVED***';
-const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY || '252667886888762';
-const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || 'dlc5axpxo';
+const MONGODB_URI = process.env.MONGODB_URI;
+const JWT_SECRET = process.env.JWT_SECRET;
+const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET;
+const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY;
+const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
+
+if (!MONGODB_URI || !JWT_SECRET || !CLOUDINARY_API_SECRET || !CLOUDINARY_API_KEY || !CLOUDINARY_CLOUD_NAME) {
+  console.error('❌ Missing required environment variables. Check your .env file.');
+  process.exit(1);
+}
 
 mongoose.connect(MONGODB_URI)
   .then(() => console.log('MongoDB Connected'))

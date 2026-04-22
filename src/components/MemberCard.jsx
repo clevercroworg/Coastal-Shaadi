@@ -1,12 +1,12 @@
 import React from 'react';
-import { User, Heart, Star, Ban, AlertTriangle, Lock } from 'lucide-react';
+import { User, Heart, Star, Ban, MessageCircle, Lock } from 'lucide-react';
 import { useMembers } from '../context/MemberContext';
 
-export default function MemberCard({ member }) {
+export default function MemberCard({ member, onUpgradePrompt, onViewProfile }) {
   const { shortlistedIds, interestedIds, ignoredIds, toggleShortlist, toggleInterest, toggleIgnore } = useMembers();
 
   // Simulate current user is on Free Plan
-  const isFreePlan = true;
+  const isFreePlan = false;
 
   const isShortlisted = shortlistedIds.includes(member.id);
   const isInterested = interestedIds.includes(member.id);
@@ -24,10 +24,10 @@ export default function MemberCard({ member }) {
       {/* Profile Image */}
       <div 
         className="w-32 h-32 md:w-36 md:h-36 shrink-0 rounded-lg bg-gray-200 overflow-hidden relative group cursor-pointer"
-        onClick={() => { if(isFreePlan) alert('Please upgrade to Premium to view photos clearly.'); }}
+        onClick={() => { if(isFreePlan) onUpgradePrompt('Clear Photos'); else onViewProfile(); }}
       >
         {member.image ? (
-          <img src={member.image} alt={member.name} className={`w-full h-full object-cover transition-all duration-300 ${isFreePlan ? 'blur-md scale-110' : ''}`} />
+          <img src={member.image} alt={member.name} className={`w-full h-full object-cover transition-all duration-300 ${isFreePlan ? 'blur-xl scale-110' : ''}`} />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300 text-white">
             <User className="w-14 h-14" />
@@ -86,22 +86,22 @@ export default function MemberCard({ member }) {
         {/* Actions */}
         <div className="border-t border-gray-100 mt-4 pt-3 flex items-center justify-start gap-6 text-xs font-medium text-gray-400">
           <button 
-            onClick={() => { if(isFreePlan) alert('Please upgrade to Premium to view full profiles and contact details.'); }} 
+            onClick={() => { if(isFreePlan) onUpgradePrompt('Full Profile Access'); else onViewProfile(); }} 
             className="flex flex-col items-center gap-1 hover:text-primary transition-colors"
           >
             {isFreePlan ? <Lock className="w-4 h-4" /> : <User className="w-4 h-4" />} <span>Full Profile</span>
           </button>
           <button
-            onClick={() => toggleInterest(member.id)}
+            onClick={() => { if(isFreePlan) onUpgradePrompt('Connection Requests'); else toggleInterest(member.id); }}
             className={`flex flex-col items-center gap-1 transition-colors ${isInterested ? 'text-primary' : 'hover:text-primary'}`}
           >
-            <Heart className={`w-4 h-4 ${isInterested ? 'fill-primary' : ''}`} /> <span>Interest</span>
+            {isFreePlan ? <Lock className="w-4 h-4" /> : <Heart className={`w-4 h-4 ${isInterested ? 'fill-primary' : ''}`} />} <span>Interest</span>
           </button>
           <button
-            onClick={() => toggleShortlist(member.id)}
+            onClick={() => { if(isFreePlan) onUpgradePrompt('Shortlisting'); else toggleShortlist(member.id); }}
             className={`flex flex-col items-center gap-1 transition-colors ${isShortlisted ? 'text-accent' : 'hover:text-accent'}`}
           >
-            <Star className={`w-4 h-4 ${isShortlisted ? 'fill-accent' : ''}`} /> <span>Shortlist</span>
+            {isFreePlan ? <Lock className="w-4 h-4" /> : <Star className={`w-4 h-4 ${isShortlisted ? 'fill-accent' : ''}`} />} <span>Shortlist</span>
           </button>
           <button
             onClick={() => toggleIgnore(member.id)}
@@ -109,8 +109,11 @@ export default function MemberCard({ member }) {
           >
             <Ban className="w-4 h-4" /> <span>Ignore</span>
           </button>
-          <button className="flex flex-col items-center gap-1 hover:text-red-500 transition-colors">
-            <AlertTriangle className="w-4 h-4" /> <span>Report</span>
+          <button 
+            onClick={() => { if(isFreePlan) onUpgradePrompt('Direct Chat & Calls'); else window.location.href='/messaging'; }}
+            className={`flex flex-col items-center gap-1 transition-colors hover:text-primary`}
+          >
+            {isFreePlan ? <Lock className="w-4 h-4" /> : <MessageCircle className="w-4 h-4" />} <span>Chat</span>
           </button>
         </div>
       </div>

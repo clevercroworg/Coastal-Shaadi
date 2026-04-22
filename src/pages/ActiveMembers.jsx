@@ -3,31 +3,43 @@ import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { useMembers } from '../context/MemberContext';
 import DashboardNavbar from '../components/DashboardNavbar';
 import MemberCard from '../components/MemberCard';
+import UpgradeModal from '../components/UpgradeModal';
+import FullProfileModal from '../components/FullProfileModal';
 
 export default function ActiveMembers() {
   const { members, getUniqueValues } = useMembers();
 
   const getInitialFilters = () => {
     let religion = '';
-    let caste = '';
     try {
       const stored = localStorage.getItem('userFilter');
       if (stored) {
         const parsed = JSON.parse(stored);
         religion = parsed.religion || '';
-        caste = parsed.caste || '';
       }
     } catch (e) {}
     
     return {
       minAge: '', maxAge: '', id: '', maritalStatus: '', 
-      religion, caste, 
+      religion, caste: '', 
       subCaste: '', language: '', profession: '',
       country: '', state: '', city: '', minHeight: '', maxHeight: '', memberType: 'all'
     };
   };
 
   const [filters, setFilters] = useState(getInitialFilters);
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [upgradeFeature, setUpgradeFeature] = useState('');
+  const [selectedMember, setSelectedMember] = useState(null);
+
+  const triggerUpgrade = (feature) => {
+    setUpgradeFeature(feature);
+    setUpgradeModalOpen(true);
+  };
+
+  const viewProfile = (member) => {
+    setSelectedMember(member);
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -132,9 +144,6 @@ export default function ActiveMembers() {
                 {/* Marital Status */}
                 <SelectFilter label="Marital Status" name="maritalStatus" options={maritalStatuses} value={filters.maritalStatus} />
 
-                {/* Religion */}
-                <SelectFilter label="Religion" name="religion" options={religions} value={filters.religion} />
-
                 {/* Caste */}
                 <SelectFilter label="Caste" name="caste" options={castes} value={filters.caste} />
 
@@ -216,7 +225,7 @@ export default function ActiveMembers() {
             <div className="space-y-4">
               {filteredMembers.length > 0 ? (
                 filteredMembers.map((member) => (
-                  <MemberCard key={member.id} member={member} />
+                  <MemberCard key={member.id} member={member} onUpgradePrompt={triggerUpgrade} onViewProfile={() => viewProfile(member)} />
                 ))
               ) : (
                 <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
@@ -228,7 +237,6 @@ export default function ActiveMembers() {
               )}
             </div>
 
-            {/* Pagination */}
             {filteredMembers.length > 0 && (
               <div className="flex justify-center items-center gap-2 mt-8">
                 <button className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"><ChevronLeft className="w-4 h-4" /></button>
@@ -239,6 +247,18 @@ export default function ActiveMembers() {
           </div>
         </div>
       </div>
+
+      <UpgradeModal 
+        isOpen={upgradeModalOpen} 
+        onClose={() => setUpgradeModalOpen(false)} 
+        featureName={upgradeFeature} 
+      />
+
+      <FullProfileModal
+        isOpen={!!selectedMember}
+        member={selectedMember}
+        onClose={() => setSelectedMember(null)}
+      />
     </main>
   );
 }

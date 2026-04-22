@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import DashboardNavbar from '../components/DashboardNavbar';
-import { Send, Phone, Video, MoreVertical, Search, User, Smile, Paperclip, Check, CheckCheck } from 'lucide-react';
+import { Send, MoreVertical, Search, User, Smile, Check, CheckCheck } from 'lucide-react';
 
 const allChats = {
   1: {
@@ -181,9 +181,6 @@ export default function Messaging() {
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                <button className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-primary transition-colors"><Phone size={17} /></button>
-                <button className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-primary transition-colors"><Video size={17} /></button>
-                <div className="w-px h-5 bg-gray-200 mx-1"></div>
                 <button className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-primary transition-colors"><MoreVertical size={17} /></button>
               </div>
             </div>
@@ -223,9 +220,6 @@ export default function Messaging() {
               <form onSubmit={handleSend} className="flex gap-3 items-center">
                 <button type="button" className="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors shrink-0">
                   <Smile size={20} />
-                </button>
-                <button type="button" className="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors shrink-0">
-                  <Paperclip size={20} />
                 </button>
                 <input
                   type="text"

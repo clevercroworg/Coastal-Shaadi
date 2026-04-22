@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react';
 import DashboardNavbar from '../components/DashboardNavbar';
-import { User, Mail, Phone, MapPin, Briefcase, GraduationCap, Map, Camera, Pencil, X, Check, Heart, Calendar, Ruler, Utensils, Shield, Globe, BookOpen } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Briefcase, GraduationCap, Map, Camera, Pencil, X, Check, Heart, Calendar, Ruler, Utensils, Shield, Globe, BookOpen, Loader2 } from 'lucide-react';
 
 export default function MyProfile() {
   const [profileImage, setProfileImage] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
 
   // Editable profile state
@@ -66,14 +67,44 @@ export default function MyProfile() {
     setEditData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfileImage(reader.result);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    setIsUploading(true);
+
+    try {
+      const timestamp = Math.round(new Date().getTime() / 1000);
+      const apiSecret = '***REMOVED***';
+      const signatureStr = `timestamp=${timestamp}${apiSecret}`;
+      
+      const msgBuffer = new TextEncoder().encode(signatureStr);
+      const hashBuffer = await crypto.subtle.digest('SHA-1', msgBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const signature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('api_key', '252667886888762');
+      formData.append('timestamp', timestamp);
+      formData.append('signature', signature);
+
+      const response = await fetch('https://api.cloudinary.com/v1_1/dlc5axpxo/image/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+      if (data.secure_url) {
+        setProfileImage(data.secure_url);
+      } else {
+        alert('Upload failed: ' + (data.error?.message || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error("Error uploading to Cloudinary", error);
+      alert('Upload failed');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -158,7 +189,11 @@ export default function MyProfile() {
                   onClick={() => fileInputRef.current?.click()}
                   className="absolute bottom-1 right-1 w-9 h-9 bg-primary hover:bg-primary-hover text-white rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110 border-2 border-white"
                 >
-                  <Camera size={14} />
+                  {isUploading ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Camera size={14} />
+                  )}
                 </button>
                 <input
                   ref={fileInputRef}
@@ -177,9 +212,11 @@ export default function MyProfile() {
               <div className="pb-1 flex gap-3">
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="bg-white border border-gray-200 text-gray-700 hover:border-primary hover:text-primary px-5 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 shadow-sm"
+                  disabled={isUploading}
+                  className="bg-white border border-gray-200 text-gray-700 hover:border-primary hover:text-primary px-5 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 shadow-sm disabled:opacity-50"
                 >
-                  <Camera size={14} /> Upload Photo
+                  {isUploading ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />} 
+                  {isUploading ? 'Uploading...' : 'Upload Photo'}
                 </button>
               </div>
             </div>

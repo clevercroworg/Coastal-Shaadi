@@ -7,23 +7,27 @@ import MemberCard from '../components/MemberCard';
 export default function ActiveMembers() {
   const { members, getUniqueValues } = useMembers();
 
-  const [filters, setFilters] = useState({
-    minAge: '',
-    maxAge: '',
-    id: '',
-    maritalStatus: '',
-    religion: '',
-    caste: '',
-    subCaste: '',
-    language: '',
-    profession: '',
-    country: '',
-    state: '',
-    city: '',
-    minHeight: '',
-    maxHeight: '',
-    memberType: 'all'
-  });
+  const getInitialFilters = () => {
+    let religion = '';
+    let caste = '';
+    try {
+      const stored = localStorage.getItem('userFilter');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        religion = parsed.religion || '';
+        caste = parsed.caste || '';
+      }
+    } catch (e) {}
+    
+    return {
+      minAge: '', maxAge: '', id: '', maritalStatus: '', 
+      religion, caste, 
+      subCaste: '', language: '', profession: '',
+      country: '', state: '', city: '', minHeight: '', maxHeight: '', memberType: 'all'
+    };
+  };
+
+  const [filters, setFilters] = useState(getInitialFilters);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -31,11 +35,7 @@ export default function ActiveMembers() {
   };
 
   const resetFilters = () => {
-    setFilters({
-      minAge: '', maxAge: '', id: '', maritalStatus: '', religion: '',
-      caste: '', subCaste: '', language: '', profession: '',
-      country: '', state: '', city: '', minHeight: '', maxHeight: '', memberType: 'all'
-    });
+    setFilters(getInitialFilters());
   };
 
   // Parse height string like "5.10" into a float for comparison

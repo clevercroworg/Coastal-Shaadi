@@ -8,6 +8,29 @@ export default function LoginPage() {
   const [searchParams] = useSearchParams();
   const type = searchParams.get('type') || 'login';
   const [religion, setReligion] = useState('');
+  const [caste, setCaste] = useState('');
+  
+  const [formData, setFormData] = useState({
+    firstName: '', lastName: '', email: '', password: '', confirmPassword: '',
+    gender: 'Male', dob: '', onBehalf: 'Self'
+  });
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleInputChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const castesList = {
+    Hindu: [
+      'Bunt', 'Billava', 'Mogaveera', 'Brahmin (GSB)', 'Vishwakarma (Achari)',
+      'Devadiga', 'Kulala (Kumbara)', 'Ganiga', 'Naika / Nayak', 'SC / ST'
+    ],
+    Christian: [
+      'Roman Catholic', 'Syrian Catholic', 'CSI (Church of South India)',
+      'Protestant', 'Pentecostal', 'Born Again Christian'
+    ]
+  };
 
   const isRegister = type === 'register';
   const isMembers = type === 'members';
@@ -25,10 +48,59 @@ export default function LoginPage() {
     subtitle = 'Sign in to view active members';
   }
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    // Dummy login: just redirect to active members
-    navigate('/active-members');
+    setError('');
+    setIsLoading(true);
+
+    try {
+      if (isRegister) {
+        if (formData.password !== formData.confirmPassword) {
+          setError('Passwords do not match');
+          setIsLoading(false);
+          return;
+        }
+        if (!religion || !caste) {
+          setError('Please select religion and caste');
+          setIsLoading(false);
+          return;
+        }
+
+        const res = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...formData, religion, caste })
+        });
+        
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Registration failed');
+        
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('userFilter', JSON.stringify({ religion, caste }));
+        localStorage.setItem('userProfile', JSON.stringify(data.user));
+        
+        navigate('/active-members');
+      } else {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: formData.email, password: formData.password })
+        });
+        
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Login failed');
+        
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('userFilter', JSON.stringify({ religion: data.user.religion, caste: data.user.caste }));
+        localStorage.setItem('userProfile', JSON.stringify(data.user));
+
+        navigate('/active-members');
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -46,13 +118,19 @@ export default function LoginPage() {
             <p className="text-gray-500">{subtitle}</p>
           </div>
 
+          {error && (
+            <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4 border border-red-100">
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleLogin} className="space-y-4">
             
             {isRegister && (
               <>
                 <div>
                   <label className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider mb-1">On Behalf</label>
-                  <select className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all text-sm bg-white">
+                  <select name="onBehalf" value={formData.onBehalf} onChange={handleInputChange} className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all text-sm bg-white">
                     <option>Self</option>
                     <option>Son</option>
                     <option>Daughter</option>
@@ -64,24 +142,24 @@ export default function LoginPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider mb-1">First Name</label>
-                    <input type="text" placeholder="First Name" className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all text-sm" />
+                    <input type="text" name="firstName" value={formData.firstName} onChange={handleInputChange} required placeholder="First Name" className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all text-sm" />
                   </div>
                   <div>
                     <label className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider mb-1">Last Name</label>
-                    <input type="text" placeholder="Last Name" className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all text-sm" />
+                    <input type="text" name="lastName" value={formData.lastName} onChange={handleInputChange} required placeholder="Last Name" className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all text-sm" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider mb-1">Gender</label>
-                    <select className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all text-sm bg-white">
+                    <select name="gender" value={formData.gender} onChange={handleInputChange} className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all text-sm bg-white">
                       <option>Male</option>
                       <option>Female</option>
                     </select>
                   </div>
                   <div>
                     <label className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider mb-1">Date Of Birth</label>
-                    <input type="text" placeholder="DD/MM/YYYY" className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all text-sm" />
+                    <input type="date" name="dob" value={formData.dob} onChange={handleInputChange} required className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all text-sm" />
                   </div>
                 </div>
               </>
@@ -92,6 +170,9 @@ export default function LoginPage() {
                 <label className={`block font-semibold text-gray-700 ${isRegister ? 'text-[11px] uppercase tracking-wider mb-1' : 'text-sm mb-1'}`}>Email Address</label>
                 <input 
                   type="email" 
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
                   required
                   className={`w-full ${isRegister ? 'px-3 py-2.5 text-sm' : 'px-4 py-3'} rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all bg-white`} 
                   placeholder={isRegister ? "Email address" : "Enter your email"} 
@@ -99,44 +180,45 @@ export default function LoginPage() {
               </div>
               
               {isRegister ? (
-                <div>
-                  <label className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider mb-1">Religion</label>
-                  {religion === 'Other' ? (
-                    <div className="relative">
-                      <input 
-                        type="text" 
-                        placeholder="Enter Religion" 
-                        autoFocus
-                        className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all text-sm pr-8 bg-white" 
-                      />
-                      <button 
-                        type="button" 
-                        onClick={() => setReligion('')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ) : (
+                <>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider mb-1">Religion</label>
                     <select 
                       value={religion}
-                      onChange={(e) => setReligion(e.target.value)}
+                      onChange={(e) => { setReligion(e.target.value); setCaste(''); }}
                       className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all text-sm bg-white"
+                      required
                     >
                       <option value="">Select Religion</option>
                       <option value="Hindu">Hindu</option>
                       <option value="Christian">Christian</option>
-                      <option value="Muslim">Muslim</option>
-                      <option value="Jain">Jain</option>
-                      <option value="Other">Others</option>
                     </select>
+                  </div>
+                  {religion && (
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider mb-1 mt-3">Caste</label>
+                      <select 
+                        value={caste}
+                        onChange={(e) => setCaste(e.target.value)}
+                        className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all text-sm bg-white"
+                        required
+                      >
+                        <option value="">Select Caste</option>
+                        {castesList[religion]?.map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
                   )}
-                </div>
+                </>
               ) : (
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Password</label>
                   <input 
                     type="password" 
+                    name="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
                     required
                     className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all bg-white" 
                     placeholder="Enter your password" 
@@ -151,6 +233,9 @@ export default function LoginPage() {
                   <label className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider mb-1 mt-1">Password</label>
                   <input 
                     type="password" 
+                    name="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
                     required
                     className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all bg-white" 
                     placeholder="••••••••" 
@@ -161,6 +246,9 @@ export default function LoginPage() {
                   <label className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider mb-1 mt-1">Confirm password</label>
                   <input 
                     type="password" 
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
                     required
                     className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all bg-white" 
                     placeholder="••••••••" 
@@ -184,9 +272,10 @@ export default function LoginPage() {
 
             <button 
               type="submit"
-              className="w-full bg-gradient-to-r from-primary to-primary-hover text-white py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all mt-4"
+              disabled={isLoading}
+              className="w-full bg-gradient-to-r from-primary to-primary-hover text-white py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all mt-4 disabled:opacity-50"
             >
-              {btnText}
+              {isLoading ? 'Please wait...' : btnText}
             </button>
           </form>
 

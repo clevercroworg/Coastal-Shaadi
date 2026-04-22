@@ -1,5 +1,5 @@
+import dotenv from 'dotenv';
 if (process.env.NODE_ENV !== 'production') {
-  const dotenv = await import('dotenv');
   dotenv.config();
 }
 import express from 'express';
@@ -22,13 +22,36 @@ const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET;
 const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY;
 const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
 
-if (!MONGODB_URI || !JWT_SECRET || !CLOUDINARY_API_SECRET || !CLOUDINARY_API_KEY || !CLOUDINARY_CLOUD_NAME) {
-  console.error('❌ Missing required environment variables. Check your .env file or Vercel env settings.');
-}
+// Debug: log which env vars are present (not values, just true/false)
+console.log('ENV CHECK:', {
+  MONGODB_URI: !!MONGODB_URI,
+  JWT_SECRET: !!JWT_SECRET,
+  CLOUDINARY_API_SECRET: !!CLOUDINARY_API_SECRET,
+  CLOUDINARY_API_KEY: !!CLOUDINARY_API_KEY,
+  CLOUDINARY_CLOUD_NAME: !!CLOUDINARY_CLOUD_NAME
+});
 
-mongoose.connect(MONGODB_URI)
-  .then(() => console.log('MongoDB Connected'))
-  .catch(err => console.log('MongoDB Connection Error: ', err));
+// Connect to MongoDB with error handling
+let dbConnected = false;
+mongoose.connect(MONGODB_URI || '')
+  .then(() => { dbConnected = true; console.log('MongoDB Connected'); })
+  .catch(err => console.error('MongoDB Connection Error:', err.message));
+
+// Health check endpoint for debugging
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    dbConnected,
+    mongoState: mongoose.connection.readyState, // 0=disconnected, 1=connected, 2=connecting
+    envVars: {
+      MONGODB_URI: !!MONGODB_URI,
+      JWT_SECRET: !!JWT_SECRET,
+      CLOUDINARY_API_SECRET: !!CLOUDINARY_API_SECRET,
+      CLOUDINARY_API_KEY: !!CLOUDINARY_API_KEY,
+      CLOUDINARY_CLOUD_NAME: !!CLOUDINARY_CLOUD_NAME
+    }
+  });
+});
 
 app.post('/api/register', async (req, res) => {
   try {
@@ -57,8 +80,8 @@ app.post('/api/register', async (req, res) => {
 
     res.status(201).json({ token, user: { id: user.id, firstName, lastName, email, religion, caste, memberId } });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('REGISTER ERROR:', err);
+    res.status(500).json({ message: 'Server error', error: err.message, stack: err.stack });
   }
 });
 
@@ -81,8 +104,8 @@ app.post('/api/login', async (req, res) => {
 
     res.json({ token, user: { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email, religion: user.religion, caste: user.caste, memberId: user.memberId, profileData: user.profileData, image: user.image } });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('LOGIN ERROR:', err);
+    res.status(500).json({ message: 'Server error', error: err.message, stack: err.stack });
   }
 });
 

@@ -5,47 +5,60 @@ import { OrnamentDivider, MandalaPattern, FlowerBouquet, FlowerCorner } from './
 
 const plans = [
   {
-    name: "Free",
+    name: "Free Plan",
     price: "₹0",
     duration: "Forever",
     icon: <Star className="w-6 h-6" />,
     features: [
-      "Create secure profile",
-      "Browse basic matches",
-      "View blurred contact details",
-      "Name, age, place & occupation visible"
+      "Create profile",
+      "Browse matches",
+      "View blurred contact details"
     ],
     highlight: false,
     cta: "Start Free"
   },
   {
-    name: "Basic",
+    name: "Basic Plan",
     price: "₹1,999",
     duration: "3 Months",
     icon: <Zap className="w-6 h-6" />,
     features: [
       "Unlock contact details (limited)",
-      "30–50 direct chats",
+      "30-50 chats",
       "See who viewed your profile",
-      "20 connection requests"
+      "Limited connects (20)"
     ],
     highlight: false,
     cta: "Choose Basic"
   },
   {
-    name: "Premium",
+    name: "Premium Plan",
     price: "₹3,499",
     duration: "6 Months",
     icon: <Sparkles className="w-6 h-6" />,
     features: [
-      "Unlimited chats & calls",
-      "50 connection requests",
+      "Unlimited chat & calls",
+      "Limited connects (50)",
       "View all contact details",
-      "Profile highlighted in searches",
-      "Priority customer support"
+      "Profile highlighted in searches"
     ],
     highlight: true,
     cta: "Go Premium"
+  },
+  {
+    name: "Elite Plan",
+    price: "₹5,999",
+    duration: "12 Months",
+    icon: <Crown className="w-6 h-6" />,
+    features: [
+      "Unlimited connects",
+      "Unlimited chats & calls",
+      "WhatsApp connectivity",
+      "Top Match boost in Udupi-Mangalore",
+      "Profile badges (Elite User)"
+    ],
+    highlight: false,
+    cta: "Go Elite"
   }
 ];
 
@@ -80,7 +93,7 @@ export default function Packages() {
         </motion.div>
 
         {/* Plans Grid */}
-        <div className="grid md:grid-cols-3 lg:grid-cols-3 gap-6 lg:gap-5">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-5">
           {plans.map((plan, idx) => (
             <motion.div
               key={idx}

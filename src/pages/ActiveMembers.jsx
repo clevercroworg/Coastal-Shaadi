@@ -81,7 +81,6 @@ export default function ActiveMembers() {
   // Get cascaded unique values based on current filters for dynamic dropdowns
   const religions = getUniqueValues('religion');
   const castes = getUniqueValues('caste');
-  const subCastes = getUniqueValues('subCaste');
   const languages = getUniqueValues('language');
   const countries = getUniqueValues('country');
   const states = getUniqueValues('state');
@@ -146,9 +145,6 @@ export default function ActiveMembers() {
 
                 {/* Caste */}
                 <SelectFilter label="Caste" name="caste" options={castes} value={filters.caste} />
-
-                {/* Sub Caste */}
-                <SelectFilter label="Sub Caste" name="subCaste" options={subCastes} value={filters.subCaste} />
 
                 {/* Mother Tongue */}
                 <SelectFilter label="Mother Tongue" name="language" options={languages} value={filters.language} />

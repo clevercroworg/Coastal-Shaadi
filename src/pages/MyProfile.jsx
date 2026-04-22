@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import DashboardNavbar from '../components/DashboardNavbar';
 import { User, Mail, Phone, MapPin, Briefcase, GraduationCap, Map, Camera, Pencil, X, Check, Heart, Calendar, Ruler, Utensils, Shield, Globe, BookOpen, Loader2 } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 export default function MyProfile() {
   // Get user from local storage
@@ -16,41 +17,76 @@ export default function MyProfile() {
   const [profileImage, setProfileImage] = useState(userData?.image || null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
+  const { showToast } = useToast();
+
+  const fetchLatestProfile = async () => {
+    const actualUserId = userData?.id || userData?._id || userData?.memberId;
+    if (!actualUserId) return;
+    try {
+      const res = await fetch(`/api/profile/${actualUserId}`);
+      if (res.ok) {
+        const latestUser = await res.json();
+        // Update local storage with fresh data
+        const newUserData = { ...userData, ...latestUser };
+        localStorage.setItem('userProfile', JSON.stringify(newUserData));
+        window.dispatchEvent(new Event('profileUpdated')); // Notify navbar
+        
+        // Update state
+        setProfileImage(latestUser.image);
+        setProfile(prev => ({
+          ...prev,
+          name: `${latestUser.firstName} ${latestUser.lastName}`,
+          email: latestUser.email,
+          phone: latestUser.phone,
+          religion: latestUser.religion || prev.religion,
+          caste: latestUser.caste || prev.caste,
+          dob: latestUser.dob || prev.dob,
+          ...latestUser.profileData
+        }));
+      }
+    } catch (e) {
+      console.error('Failed to fetch latest profile', e);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchLatestProfile();
+  }, []);
 
   // Editable profile state
   const [profile, setProfile] = useState({
-    name: userData ? `${userData.firstName} ${userData.lastName}` : 'Rahul Shetty',
-    memberId: userData?.memberId || 'CS-2068045690',
+    name: userData ? `${userData.firstName} ${userData.lastName}` : '',
+    memberId: userData?.memberId || '',
     memberType: 'Free',
-    email: userData?.email || 'rahul.shetty@gmail.com',
-    phone: userData?.phone || '+91 9876543210',
-    city: userData?.profileData?.city || 'Mangalore',
-    state: userData?.profileData?.state || 'Karnataka',
-    country: userData?.profileData?.country || 'India',
-    age: userData?.profileData?.age || '28',
-    dob: userData?.dob || '14-Aug-1995',
-    height: userData?.profileData?.height || "5' 10\" (177 cm)",
-    maritalStatus: userData?.profileData?.maritalStatus || 'Never Married',
-    createdBy: userData?.onBehalf || 'Self',
-    diet: userData?.profileData?.diet || 'Non-Vegetarian',
-    disability: userData?.profileData?.disability || 'None',
-    religion: userData?.religion || 'Hindu',
-    motherTongue: userData?.profileData?.motherTongue || 'Tulu',
-    caste: userData?.caste || 'Bunt',
+    email: userData?.email || '',
+    phone: userData?.phone || '',
+    city: userData?.profileData?.city || '-',
+    state: userData?.profileData?.state || '-',
+    country: userData?.profileData?.country || '-',
+    age: userData?.profileData?.age || '-',
+    dob: userData?.dob || '-',
+    height: userData?.profileData?.height || '-',
+    maritalStatus: userData?.profileData?.maritalStatus || '-',
+    createdBy: userData?.onBehalf || '-',
+    diet: userData?.profileData?.diet || '-',
+    disability: userData?.profileData?.disability || '-',
+    religion: userData?.religion || '-',
+    motherTongue: userData?.profileData?.motherTongue || '-',
+    caste: userData?.caste || '-',
     subCaste: userData?.profileData?.subCaste || '-',
-    gothra: userData?.profileData?.gothra || 'Not Specified',
-    education: userData?.profileData?.education || 'B.E / B.Tech (Computer Science)',
-    profession: userData?.profileData?.profession || 'Senior Software Engineer',
-    company: userData?.profileData?.company || 'Infosys Technologies',
-    employedIn: userData?.profileData?.employedIn || 'Private Sector (MNC)',
-    income: userData?.profileData?.income || '₹ 15L - 25L',
-    workLocation: userData?.profileData?.workLocation || 'Bangalore, India',
-    aboutMe: userData?.profileData?.aboutMe || 'I am a fun-loving person who values family traditions while embracing modern life.',
-    partnerAge: userData?.profileData?.partnerAge || '24 - 30 years',
-    partnerHeight: userData?.profileData?.partnerHeight || "5' 2\" - 5' 8\"",
-    partnerEducation: userData?.profileData?.partnerEducation || 'Graduate or above',
-    partnerProfession: userData?.profileData?.partnerProfession || 'Any',
-    partnerLocation: userData?.profileData?.partnerLocation || 'India / Abroad',
+    gothra: userData?.profileData?.gothra || '-',
+    education: userData?.profileData?.education || '-',
+    profession: userData?.profileData?.profession || '-',
+    company: userData?.profileData?.company || '-',
+    employedIn: userData?.profileData?.employedIn || '-',
+    income: userData?.profileData?.income || '-',
+    workLocation: userData?.profileData?.workLocation || '-',
+    aboutMe: userData?.profileData?.aboutMe || 'Please edit to add some details about yourself.',
+    partnerAge: userData?.profileData?.partnerAge || '-',
+    partnerHeight: userData?.profileData?.partnerHeight || '-',
+    partnerEducation: userData?.profileData?.partnerEducation || '-',
+    partnerProfession: userData?.profileData?.partnerProfession || '-',
+    partnerLocation: userData?.profileData?.partnerLocation || '-',
   });
 
   // Edit mode per section
@@ -73,19 +109,27 @@ export default function MyProfile() {
     setEditSection(null);
     setEditData({});
 
-    if (userData?.id) {
+    const actualUserId = userData?.id || userData?._id || userData?.memberId;
+    if (actualUserId) {
       try {
-        await fetch('/api/profile', {
+        const updateRes = await fetch('/api/profile', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: userData.id, profileData: editData })
+          body: JSON.stringify({ userId: actualUserId, profileData: editData })
         });
+        
+        if (!updateRes.ok) {
+          const errData = await updateRes.json();
+          throw new Error(errData.message || 'Failed to save to database');
+        }
         
         // Update local storage
         const newUserData = { ...userData, profileData: { ...userData.profileData, ...editData } };
         localStorage.setItem('userProfile', JSON.stringify(newUserData));
+        showToast('Profile saved successfully!', 'success');
       } catch (err) {
         console.error('Failed to save to database', err);
+        showToast('Failed to save profile. Please try again.', 'error');
       }
     }
   };
@@ -101,20 +145,26 @@ export default function MyProfile() {
     setIsUploading(true);
 
     try {
-      const timestamp = Math.round(new Date().getTime() / 1000);
-      const apiSecret = '***REMOVED***';
-      const signatureStr = `timestamp=${timestamp}${apiSecret}`;
-      
-      const msgBuffer = new TextEncoder().encode(signatureStr);
-      const hashBuffer = await crypto.subtle.digest('SHA-1', msgBuffer);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const signature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      let existingPublicId = '';
+      if (profileImage && profileImage.includes('cloudinary.com')) {
+        // Extract public_id from Cloudinary URL (e.g., https://res.cloudinary.com/.../upload/v1234/public_id.jpg)
+        const parts = profileImage.split('/');
+        const filename = parts[parts.length - 1];
+        existingPublicId = filename.split('.')[0];
+      }
+
+      const sigRes = await fetch(`/api/cloudinary-signature${existingPublicId ? `?public_id=${existingPublicId}` : ''}`);
+      const { timestamp, signature } = await sigRes.json();
 
       const formData = new FormData();
       formData.append('file', file);
       formData.append('api_key', '252667886888762');
       formData.append('timestamp', timestamp);
       formData.append('signature', signature);
+      if (existingPublicId) {
+        formData.append('public_id', existingPublicId);
+        formData.append('invalidate', 'true');
+      }
 
       const response = await fetch('https://api.cloudinary.com/v1_1/dlc5axpxo/image/upload', {
         method: 'POST',
@@ -124,21 +174,30 @@ export default function MyProfile() {
       const data = await response.json();
       if (data.secure_url) {
         setProfileImage(data.secure_url);
-        if (userData?.id) {
-          await fetch('/api/profile', {
+        const actualUserId = userData?.id || userData?._id || userData?.memberId;
+        if (actualUserId) {
+          const updateRes = await fetch('/api/profile', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: userData.id, image: data.secure_url })
+            body: JSON.stringify({ userId: actualUserId, image: data.secure_url })
           });
-          const newUserData = { ...userData, image: data.secure_url };
+          
+          if (!updateRes.ok) {
+            const errData = await updateRes.json();
+            throw new Error(errData.message || 'Failed to update profile in database');
+          }
+
+          const newUserData = { ...JSON.parse(localStorage.getItem('userProfile') || '{}'), image: data.secure_url };
           localStorage.setItem('userProfile', JSON.stringify(newUserData));
+          window.dispatchEvent(new Event('profileUpdated'));
+          showToast('Profile image updated successfully!', 'success');
         }
       } else {
-        alert('Upload failed: ' + (data.error?.message || 'Unknown error'));
+        showToast('Upload failed: ' + (data.error?.message || 'Unknown error'), 'error');
       }
     } catch (error) {
       console.error("Error uploading to Cloudinary", error);
-      alert('Upload failed');
+      showToast('Upload failed. Please try again.', 'error');
     } finally {
       setIsUploading(false);
     }
@@ -212,12 +271,17 @@ export default function MyProfile() {
             {/* Avatar */}
             <div className="flex flex-col sm:flex-row gap-5 items-center sm:items-end -mt-16 mb-6 relative z-10">
               <div className="relative group">
-                <div className="w-32 h-32 rounded-full border-4 border-white bg-white shadow-xl overflow-hidden ring-2 ring-primary/10">
+                <div className="w-32 h-32 rounded-full border-4 border-white bg-white shadow-xl overflow-hidden ring-2 ring-primary/10 relative">
                   {profileImage ? (
                     <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-gray-300">
                       <User size={56} />
+                    </div>
+                  )}
+                  {isUploading && (
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-sm transition-all z-20">
+                      <Loader2 className="w-8 h-8 text-white animate-spin" />
                     </div>
                   )}
                 </div>

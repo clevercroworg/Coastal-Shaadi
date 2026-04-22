@@ -11,7 +11,7 @@ export default function LoginPage() {
   const [caste, setCaste] = useState('');
   
   const [formData, setFormData] = useState({
-    firstName: '', lastName: '', email: '', password: '', confirmPassword: '',
+    firstName: '', lastName: '', email: '', phone: '', password: '', confirmPassword: '',
     gender: 'Male', dob: '', onBehalf: 'Self'
   });
   const [error, setError] = useState('');
@@ -182,7 +182,22 @@ export default function LoginPage() {
               {isRegister ? (
                 <>
                   <div>
-                    <label className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider mb-1">Religion</label>
+                    <label className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider mb-1">Phone Number</label>
+                    <input 
+                      type="tel" 
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all bg-white" 
+                      placeholder="Phone number" 
+                    />
+                  </div>
+                  <div className="col-span-2 text-[10px] text-gray-400 -mt-1 italic">
+                    Note: Email and Phone number will require verification before final access.
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider mb-1 mt-1">Religion</label>
                     <select 
                       value={religion}
                       onChange={(e) => { setReligion(e.target.value); setCaste(''); }}
@@ -267,7 +282,7 @@ export default function LoginPage() {
                   "Remember me"
                 )}
               </label>
-              {!isRegister && <a href="#" className="text-primary hover:text-primary-hover font-medium">Forgot Password?</a>}
+              {!isRegister && <Link to="/forgot-password" className="text-primary hover:text-primary-hover font-medium">Forgot Password?</Link>}
             </div>
 
             <button 

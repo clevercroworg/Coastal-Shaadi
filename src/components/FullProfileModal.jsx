@@ -52,7 +52,7 @@ export default function FullProfileModal({ member, isOpen, onClose }) {
                 )}
               </div>
               <div className="flex gap-3">
-                <button onClick={() => navigate('/messaging')} className="bg-primary hover:bg-primary-hover text-white px-6 py-2.5 rounded-full font-semibold shadow-lg shadow-primary/30 transition-all transform hover:-translate-y-0.5">
+                <button onClick={() => { sessionStorage.setItem('pendingChatMemberId', member.id); navigate('/messaging'); }} className="bg-primary hover:bg-primary-hover text-white px-6 py-2.5 rounded-full font-semibold shadow-lg shadow-primary/30 transition-all transform hover:-translate-y-0.5">
                   Message
                 </button>
               </div>

@@ -6,6 +6,14 @@ import { Link, useLocation } from 'react-router-dom';
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const isLoggedIn = !!localStorage.getItem('token');
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userFilter');
+    localStorage.removeItem('userProfile');
+    window.location.href = '/login?type=login';
+  };
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -65,9 +73,16 @@ export default function Navbar() {
                 <span className={`absolute -bottom-1 left-0 h-0.5 bg-accent transition-all duration-300 ${location.pathname === item.path ? 'w-full' : 'w-0 group-hover:w-full'}`} />
               </Link>
             ))}
-            <Link to="/login?type=register" className="bg-gradient-to-r from-primary to-primary-hover text-white px-7 py-2.5 rounded-full text-sm font-semibold shadow-lg hover:shadow-[0_4px_20px_rgba(128,0,0,0.4)] transition-all duration-300 transform hover:-translate-y-0.5 border border-primary/20 flex items-center justify-center">
-              Register Free
-            </Link>
+            
+            {isLoggedIn ? (
+              <button onClick={handleLogout} className="bg-gradient-to-r from-gray-800 to-gray-900 text-white px-7 py-2.5 rounded-full text-sm font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 border border-gray-700 flex items-center justify-center">
+                Logout
+              </button>
+            ) : (
+              <Link to="/login?type=register" className="bg-gradient-to-r from-primary to-primary-hover text-white px-7 py-2.5 rounded-full text-sm font-semibold shadow-lg hover:shadow-[0_4px_20px_rgba(128,0,0,0.4)] transition-all duration-300 transform hover:-translate-y-0.5 border border-primary/20 flex items-center justify-center">
+                Register Free
+              </Link>
+            )}
           </div>
 
           {/* Mobile */}
@@ -111,9 +126,15 @@ export default function Navbar() {
                 </motion.div>
               ))}
               <div className="pt-4">
-                <Link to="/login?type=register" onClick={() => setMobileMenuOpen(false)} className="block w-full text-center bg-primary text-white py-3 rounded-lg font-semibold shadow-md">
-                  Register Free
-                </Link>
+                {isLoggedIn ? (
+                  <button onClick={handleLogout} className="block w-full text-center bg-gray-900 text-white py-3 rounded-lg font-semibold shadow-md">
+                    Logout
+                  </button>
+                ) : (
+                  <Link to="/login?type=register" onClick={() => setMobileMenuOpen(false)} className="block w-full text-center bg-primary text-white py-3 rounded-lg font-semibold shadow-md">
+                    Register Free
+                  </Link>
+                )}
               </div>
             </div>
           </motion.div>

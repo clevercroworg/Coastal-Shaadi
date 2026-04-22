@@ -35,19 +35,6 @@ export const MemberProvider = ({ children }) => {
             location: user.profileData?.location || `${user.profileData?.city || '-'}, ${user.profileData?.country || '-'}`,
             image: user.image || null
           }));
-          
-          // Filter out the logged-in user so they don't see themselves
-          try {
-            const stored = localStorage.getItem('userProfile');
-            if (stored) {
-              const loggedInUser = JSON.parse(stored);
-              const filtered = formattedMembers.filter(m => m.id !== loggedInUser.memberId && m.id !== loggedInUser.id);
-              setMembers(filtered);
-              setIsLoading(false);
-              return;
-            }
-          } catch(e) {}
-
           setMembers(formattedMembers);
         }
       } catch (error) {
@@ -89,9 +76,21 @@ export const MemberProvider = ({ children }) => {
     return [...new Set(members.map(m => m[field]).filter(v => v && v !== '-'))];
   };
 
+  // Dynamically filter out logged in user on every access
+  const getFilteredMembers = () => {
+    try {
+      const stored = localStorage.getItem('userProfile');
+      if (stored) {
+        const loggedInUser = JSON.parse(stored);
+        return members.filter(m => m.id !== loggedInUser.memberId && m.id !== loggedInUser.id);
+      }
+    } catch(e) {}
+    return members;
+  };
+
   return (
     <MemberContext.Provider value={{
-      members,
+      members: getFilteredMembers(),
       shortlistedIds,
       interestedIds,
       ignoredIds,

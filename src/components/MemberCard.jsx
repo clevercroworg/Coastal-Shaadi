@@ -1,9 +1,11 @@
 import React from 'react';
 import { User, Heart, Star, Ban, MessageCircle, Lock } from 'lucide-react';
 import { useMembers } from '../context/MemberContext';
+import { useToast } from '../context/ToastContext';
 
 export default function MemberCard({ member, onUpgradePrompt, onViewProfile }) {
   const { shortlistedIds, interestedIds, ignoredIds, toggleShortlist, toggleInterest, toggleIgnore } = useMembers();
+  const { showToast } = useToast();
 
   // Simulate current user is on Free Plan
   const isFreePlan = false;
@@ -92,7 +94,24 @@ export default function MemberCard({ member, onUpgradePrompt, onViewProfile }) {
             {isFreePlan ? <Lock className="w-4 h-4" /> : <User className="w-4 h-4" />} <span>Full Profile</span>
           </button>
           <button
-            onClick={() => { if(isFreePlan) onUpgradePrompt('Connection Requests'); else toggleInterest(member.id); }}
+            onClick={async () => { 
+              if(isFreePlan) { onUpgradePrompt('Connection Requests'); return; }
+              try {
+                const userData = JSON.parse(localStorage.getItem('userProfile') || '{}');
+                const res = await fetch('/api/connections/send', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ senderId: userData.id, receiverMemberId: member.id })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                  toggleInterest(member.id);
+                  showToast('Interest sent successfully! ❤️', 'success');
+                } else {
+                  showToast(data.message || 'Already sent', 'error');
+                }
+              } catch(err) { console.error(err); }
+            }}
             className={`flex flex-col items-center gap-1 transition-colors ${isInterested ? 'text-primary' : 'hover:text-primary'}`}
           >
             {isFreePlan ? <Lock className="w-4 h-4" /> : <Heart className={`w-4 h-4 ${isInterested ? 'fill-primary' : ''}`} />} <span>Interest</span>
@@ -110,7 +129,13 @@ export default function MemberCard({ member, onUpgradePrompt, onViewProfile }) {
             <Ban className="w-4 h-4" /> <span>Ignore</span>
           </button>
           <button 
-            onClick={() => { if(isFreePlan) onUpgradePrompt('Direct Chat & Calls'); else window.location.href='/messaging'; }}
+            onClick={() => { 
+              if(isFreePlan) onUpgradePrompt('Direct Chat & Calls'); 
+              else {
+                sessionStorage.setItem('pendingChatMemberId', member.id);
+                window.location.href='/messaging';
+              }
+            }}
             className={`flex flex-col items-center gap-1 transition-colors hover:text-primary`}
           >
             {isFreePlan ? <Lock className="w-4 h-4" /> : <MessageCircle className="w-4 h-4" />} <span>Chat</span>

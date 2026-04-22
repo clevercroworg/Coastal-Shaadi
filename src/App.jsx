@@ -15,15 +15,23 @@ import Interests from './pages/Interests';
 import Shortlist from './pages/Shortlist';
 import Messaging from './pages/Messaging';
 import Ignored from './pages/Ignored';
+import ForgotPassword from './pages/ForgotPassword';
+import Heartbeat from './components/Heartbeat';
 
 // Context
 import { MemberProvider } from './context/MemberContext';
+import { ToastProvider } from './context/ToastContext';
+
+// Auth Guard
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
-    <MemberProvider>
+    <ToastProvider>
+      <MemberProvider>
       <BrowserRouter>
         <div className="font-sans text-gray-900 overflow-x-hidden bg-canvas min-h-screen flex flex-col">
+          <Heartbeat />
           <Navbar />
           <div className="flex-1">
             <Routes>
@@ -32,21 +40,23 @@ function App() {
               <Route path="/success-stories" element={<SuccessStoriesPage />} />
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/contact" element={<Contact />} />
-              <Route path="/active-members" element={<ActiveMembers />} />
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
 
-              {/* Member Dashboard Routes */}
-              <Route path="/profile" element={<MyProfile />} />
-              <Route path="/interests" element={<Interests />} />
-              <Route path="/shortlist" element={<Shortlist />} />
-              <Route path="/messaging" element={<Messaging />} />
-              <Route path="/ignored" element={<Ignored />} />
+              {/* Protected Routes */}
+              <Route path="/active-members" element={<ProtectedRoute><ActiveMembers /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><MyProfile /></ProtectedRoute>} />
+              <Route path="/interests" element={<ProtectedRoute><Interests /></ProtectedRoute>} />
+              <Route path="/shortlist" element={<ProtectedRoute><Shortlist /></ProtectedRoute>} />
+              <Route path="/messaging" element={<ProtectedRoute><Messaging /></ProtectedRoute>} />
+              <Route path="/ignored" element={<ProtectedRoute><Ignored /></ProtectedRoute>} />
             </Routes>
           </div>
           <Footer />
         </div>
       </BrowserRouter>
-    </MemberProvider>
+      </MemberProvider>
+    </ToastProvider>
   );
 }
 

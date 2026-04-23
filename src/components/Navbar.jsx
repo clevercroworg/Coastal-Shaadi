@@ -44,7 +44,7 @@ export default function Navbar() {
           {/* Logo */}
           <Link to="/" className="flex items-center group">
             <img
-              src="/logo.svg"
+              src="/Coastal%20Shaadi%201.png"
               alt="Coastal Shaadi"
               className="h-14 lg:h-16 max-w-[240px] w-auto transition-all duration-300"
             />

@@ -18,7 +18,7 @@ export default function Footer() {
             <div className="lg:col-span-1">
               <div className="flex items-center gap-2 mb-5">
                 <img
-                  src="/logo.svg"
+                  src="/Coastal%20Shaadi%201.png"
                   alt="Coastal Shaadi"
                   className="h-10 lg:h-12 w-auto"
                 />

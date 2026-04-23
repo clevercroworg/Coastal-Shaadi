@@ -17,10 +17,11 @@ export default function Footer() {
             {/* Brand */}
             <div className="lg:col-span-1">
               <div className="flex items-center gap-2 mb-5">
-                <Heart className="w-6 h-6 text-accent" fill="currentColor" strokeWidth={0} />
-                <span className="font-serif text-xl font-bold">
-                  Coastal <span className="text-accent">Shaadi</span>
-                </span>
+                <img
+                  src="/logo.svg"
+                  alt="Coastal Shaadi"
+                  className="h-16 w-auto"
+                />
               </div>
               <p className="text-gray-400 text-sm leading-relaxed mb-6">
                 Honouring our community matrimonial traditions across the beautiful Udupi-Mangalore coastal belt. Your privacy, our promise. <br/><span className="text-accent italic font-medium mt-2 block">One Step to Forever.</span>

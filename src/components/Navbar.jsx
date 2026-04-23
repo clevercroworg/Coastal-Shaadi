@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Menu, X, Heart } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -42,19 +42,12 @@ export default function Navbar() {
         <div className="flex justify-between items-center">
           
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="relative">
-              <Heart className={`w-7 h-7 transition-colors duration-300 ${scrolled ? 'text-primary' : 'text-accent'}`} fill="currentColor" strokeWidth={0} />
-              <Heart className={`w-7 h-7 absolute inset-0 animate-ping opacity-20 ${scrolled ? 'text-primary' : 'text-accent'}`} fill="currentColor" strokeWidth={0} />
-            </div>
-            <div className="flex flex-col leading-none">
-              <span className={`font-serif text-xl font-bold tracking-tight transition-colors duration-300 ${scrolled ? 'text-primary' : 'text-white'}`}>
-                Coastal Shaadi
-              </span>
-              <span className={`text-[10px] uppercase tracking-[0.2em] font-medium transition-colors duration-300 ${scrolled ? 'text-accent' : 'text-accent/80'}`}>
-                One Step to Forever
-              </span>
-            </div>
+          <Link to="/" className="flex items-center group">
+            <img
+              src="/logo.svg"
+              alt="Coastal Shaadi"
+              className="h-24 max-w-[240px] w-auto transition-all duration-300"
+            />
           </Link>
 
           {/* Desktop Links */}

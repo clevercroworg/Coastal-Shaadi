@@ -79,7 +79,11 @@ export default function LoginPage() {
         localStorage.setItem('userFilter', JSON.stringify({ religion, caste }));
         localStorage.setItem('userProfile', JSON.stringify(data.user));
         
-        navigate('/active-members');
+        if (data.user.status === 'pending' || data.user.status === 'rejected') {
+          navigate('/pending');
+        } else {
+          navigate('/active-members');
+        }
       } else {
         const res = await fetch('/api/login', {
           method: 'POST',
@@ -90,11 +94,19 @@ export default function LoginPage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || 'Login failed');
         
+        if (data.user.role === 'admin') {
+          throw new Error('Admins must use the dedicated admin login portal.');
+        }
+
         localStorage.setItem('token', data.token);
         localStorage.setItem('userFilter', JSON.stringify({ religion: data.user.religion, caste: data.user.caste }));
         localStorage.setItem('userProfile', JSON.stringify(data.user));
 
-        navigate('/active-members');
+        if (data.user.status === 'pending' || data.user.status === 'rejected') {
+          navigate('/pending');
+        } else {
+          navigate('/active-members');
+        }
       }
     } catch (err) {
       setError(err.message);

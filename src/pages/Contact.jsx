@@ -67,36 +67,16 @@ export default function Contact() {
 
             <div className="space-y-6">
               <div className="flex items-start gap-4 p-4 rounded-xl hover:bg-white shadow-sm border border-transparent hover:border-gray-100 transition-all">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <Phone className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-1">Call Us</h3>
-                  <p className="text-gray-600">+91 98765 43210</p>
-                  <p className="text-sm text-gray-500 mt-1">Mon-Sat, 9AM to 6PM</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4 p-4 rounded-xl hover:bg-white shadow-sm border border-transparent hover:border-gray-100 transition-all">
                 <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
                   <Mail className="w-5 h-5 text-accent-dark" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-1">Email Us</h3>
                   <p className="text-gray-600">support@coastalshaadi.com</p>
-                  <p className="text-gray-600">info@coastalshaadi.com</p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-4 p-4 rounded-xl hover:bg-white shadow-sm border border-transparent hover:border-gray-100 transition-all">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <MapPin className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-1">Visit Us</h3>
-                  <p className="text-gray-600">123 Coastal Premium Tower,<br/>Marine Drive, Mumbai 400020</p>
-                </div>
-              </div>
+
             </div>
           </motion.div>
         </div>

@@ -16,7 +16,9 @@ const userSchema = new mongoose.Schema({
   image: { type: String },
   resetOtp: { type: String },
   resetOtpExpires: { type: Date },
-  lastSeen: { type: Date, default: Date.now }
+  lastSeen: { type: Date, default: Date.now },
+  role: { type: String, enum: ['user', 'admin'], default: 'user' },
+  status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }
 }, { timestamps: true });
 
 export default mongoose.models.User || mongoose.model('User', userSchema);

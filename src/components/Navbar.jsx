@@ -52,7 +52,7 @@ export default function Navbar() {
                 Coastal Shaadi
               </span>
               <span className={`text-[10px] uppercase tracking-[0.2em] font-medium transition-colors duration-300 ${scrolled ? 'text-accent' : 'text-accent/80'}`}>
-                Premium Matrimony
+                One Step to Forever
               </span>
             </div>
           </Link>

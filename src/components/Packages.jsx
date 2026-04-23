@@ -24,7 +24,7 @@ const plans = [
     icon: <Zap className="w-6 h-6" />,
     features: [
       "Unlock contact details (limited)",
-      "30-50 chats",
+      "20 chats",
       "See who viewed your profile",
       "Limited connects (20)"
     ],

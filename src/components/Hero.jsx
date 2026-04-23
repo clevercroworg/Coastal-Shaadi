@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { LeafCorner, FloatingDots, MandalaPattern } from './Decorative';
 import { ChevronDown, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const heroImages = [
   { src: "/images/hero-wedding.png", alt: "Traditional Wedding Ceremony" },
@@ -10,7 +11,66 @@ const heroImages = [
 
 export default function Hero() {
   const [currentImage, setCurrentImage] = useState(0);
+  const navigate = useNavigate();
   const [religion, setReligion] = useState('');
+  const [caste, setCaste] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    firstName: '', lastName: '', email: '', phone: '', password: '', confirmPassword: '',
+    gender: 'Male', dob: '', onBehalf: 'Self'
+  });
+
+  const castesList = {
+    Hindu: [
+      'Bunt', 'Billava', 'Mogaveera', 'Brahmin (GSB)', 'Vishwakarma (Achari)',
+      'Devadiga', 'Kulala (Kumbara)', 'Ganiga', 'Naika / Nayak', 'SC / ST'
+    ],
+    Christian: [
+      'Roman Catholic', 'Syrian Catholic', 'CSI (Church of South India)',
+      'Protestant', 'Pentecostal', 'Born Again Christian'
+    ]
+  };
+
+  const handleInputChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    if (!religion || !caste) {
+      setError('Please select religion and caste');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...formData, religion, caste })
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Registration failed');
+      
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('userFilter', JSON.stringify({ religion, caste }));
+      localStorage.setItem('userProfile', JSON.stringify(data.user));
+      
+      navigate('/pending');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -110,12 +170,19 @@ export default function Hero() {
             <div className="absolute -top-px left-8 right-8 h-1 bg-gradient-to-r from-transparent via-accent to-transparent rounded-full" />
             <div className="text-center mb-6">
               <h3 className="text-2xl font-serif text-white font-bold">Create Account</h3>
-              <p className="text-sm text-white/60 mt-1.5">Start your forever journey</p>
+              <p className="text-sm text-white/60 mt-1.5">One Step to Forever</p>
             </div>
-            <form className="space-y-3">
+            
+            {error && (
+              <div className="bg-red-500/20 border border-red-500/50 text-red-200 p-2 rounded-lg text-xs mb-4 text-center">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-3">
               <div>
                 <label className="block text-[10px] font-semibold text-white/70 uppercase tracking-wider mb-1">On Behalf</label>
-                <select className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2.5 text-[13px] text-white/80 focus:outline-none focus:border-accent/60 transition-all">
+                <select name="onBehalf" value={formData.onBehalf} onChange={handleInputChange} className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-[13px] text-white/80 focus:outline-none focus:border-accent/60 transition-all">
                   <option className="bg-gray-900">Self</option>
                   <option className="bg-gray-900">Son</option>
                   <option className="bg-gray-900">Daughter</option>
@@ -127,88 +194,88 @@ export default function Hero() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] font-semibold text-white/70 uppercase tracking-wider mb-1">First Name</label>
-                  <input type="text" placeholder="First Name" className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2.5 text-[13px] text-white placeholder-white/30 focus:outline-none focus:border-accent/60 transition-all" />
+                  <input type="text" name="firstName" value={formData.firstName} onChange={handleInputChange} required placeholder="First Name" className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-[13px] text-white placeholder-white/30 focus:outline-none focus:border-accent/60 transition-all" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-semibold text-white/70 uppercase tracking-wider mb-1">Last Name</label>
-                  <input type="text" placeholder="Last Name" className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2.5 text-[13px] text-white placeholder-white/30 focus:outline-none focus:border-accent/60 transition-all" />
+                  <input type="text" name="lastName" value={formData.lastName} onChange={handleInputChange} required placeholder="Last Name" className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-[13px] text-white placeholder-white/30 focus:outline-none focus:border-accent/60 transition-all" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] font-semibold text-white/70 uppercase tracking-wider mb-1">Gender</label>
-                  <select className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2.5 text-[13px] text-white/80 focus:outline-none focus:border-accent/60 transition-all">
+                  <select name="gender" value={formData.gender} onChange={handleInputChange} className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-[13px] text-white/80 focus:outline-none focus:border-accent/60 transition-all">
                     <option className="bg-gray-900">Male</option>
                     <option className="bg-gray-900">Female</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-[10px] font-semibold text-white/70 uppercase tracking-wider mb-1">Date Of Birth</label>
-                  <input type="text" placeholder="DD/MM/YYYY" className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2.5 text-[13px] text-white placeholder-white/30 focus:outline-none focus:border-accent/60 transition-all" />
+                  <input type="date" name="dob" value={formData.dob} onChange={handleInputChange} required className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-[13px] text-white placeholder-white/30 focus:outline-none focus:border-accent/60 transition-all" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] font-semibold text-white/70 uppercase tracking-wider mb-1">Email address</label>
-                  <input type="email" placeholder="Email address" className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2.5 text-[13px] text-white placeholder-white/30 focus:outline-none focus:border-accent/60 transition-all" />
+                  <input type="email" name="email" value={formData.email} onChange={handleInputChange} required placeholder="Email address" className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-[13px] text-white placeholder-white/30 focus:outline-none focus:border-accent/60 transition-all" />
                 </div>
                 <div>
+                  <label className="block text-[10px] font-semibold text-white/70 uppercase tracking-wider mb-1">Phone Number</label>
+                  <input type="tel" name="phone" value={formData.phone} onChange={handleInputChange} required placeholder="Phone number" className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-[13px] text-white placeholder-white/30 focus:outline-none focus:border-accent/60 transition-all" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
                   <label className="block text-[10px] font-semibold text-white/70 uppercase tracking-wider mb-1">Religion</label>
-                  {religion === 'Other' ? (
-                    <div className="relative">
-                      <input 
-                        type="text" 
-                        placeholder="Enter Religion" 
-                        autoFocus
-                        className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2.5 text-[13px] text-white placeholder-white/30 focus:outline-none focus:border-accent/60 transition-all pr-8" 
-                      />
-                      <button 
-                        type="button" 
-                        onClick={() => setReligion('')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-white/50 hover:text-white"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ) : (
-                    <select 
-                      value={religion}
-                      onChange={(e) => setReligion(e.target.value)}
-                      className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2.5 text-[13px] text-white/80 focus:outline-none focus:border-accent/60 transition-all"
-                    >
-                      <option className="bg-gray-900" value="">Select Religion</option>
-                      <option className="bg-gray-900" value="Hindu">Hindu</option>
-                      <option className="bg-gray-900" value="Christian">Christian</option>
-                      <option className="bg-gray-900" value="Muslim">Muslim</option>
-                      <option className="bg-gray-900" value="Jain">Jain</option>
-                      <option className="bg-gray-900" value="Other">Others</option>
-                    </select>
-                  )}
+                  <select 
+                    value={religion}
+                    onChange={(e) => { setReligion(e.target.value); setCaste(''); }}
+                    required
+                    className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-[13px] text-white/80 focus:outline-none focus:border-accent/60 transition-all"
+                  >
+                    <option className="bg-gray-900" value="">Select Religion</option>
+                    <option className="bg-gray-900" value="Hindu">Hindu</option>
+                    <option className="bg-gray-900" value="Christian">Christian</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-white/70 uppercase tracking-wider mb-1">Caste</label>
+                  <select 
+                    value={caste}
+                    onChange={(e) => setCaste(e.target.value)}
+                    required
+                    className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-[13px] text-white/80 focus:outline-none focus:border-accent/60 transition-all"
+                  >
+                    <option className="bg-gray-900" value="">Select Caste</option>
+                    {castesList[religion]?.map((c) => (
+                      <option className="bg-gray-900" key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] font-semibold text-white/70 uppercase tracking-wider mb-1">Password</label>
-                  <input type="password" placeholder="••••••••" className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2.5 text-[13px] text-white placeholder-white/30 focus:outline-none focus:border-accent/60 transition-all" />
+                  <input type="password" name="password" value={formData.password} onChange={handleInputChange} required placeholder="••••••••" className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-[13px] text-white placeholder-white/30 focus:outline-none focus:border-accent/60 transition-all" />
                   <p className="text-[9px] text-white/40 mt-1">Minimum 8 characters</p>
                 </div>
                 <div>
                   <label className="block text-[10px] font-semibold text-white/70 uppercase tracking-wider mb-1">Confirm password</label>
-                  <input type="password" placeholder="••••••••" className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2.5 text-[13px] text-white placeholder-white/30 focus:outline-none focus:border-accent/60 transition-all" />
+                  <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleInputChange} required placeholder="••••••••" className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-[13px] text-white placeholder-white/30 focus:outline-none focus:border-accent/60 transition-all" />
                   <p className="text-[9px] text-white/40 mt-1">Minimum 8 characters</p>
                 </div>
               </div>
 
               <div className="flex items-start gap-2 mt-2 pt-2">
-                <input type="checkbox" id="terms" className="mt-0.5 rounded border-white/15 bg-white/10 text-accent focus:ring-accent/60" />
+                <input type="checkbox" id="terms" required className="mt-0.5 rounded border-white/15 bg-white/10 text-accent focus:ring-accent/60" />
                 <label htmlFor="terms" className="text-[10px] text-white/60">
                   By signing up you agree to our <a href="#" className="text-accent hover:underline">terms and conditions.</a>
                 </label>
               </div>
 
-              <motion.button type="button" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                className="w-full bg-gradient-to-r from-primary to-primary-hover text-white py-3 rounded-xl font-bold text-sm shadow-lg mt-3 flex items-center justify-center gap-2">
-                Create Account
+              <motion.button type="submit" disabled={isLoading} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                className="w-full bg-gradient-to-r from-primary to-primary-hover text-white py-3 rounded-xl font-bold text-sm shadow-lg mt-3 flex items-center justify-center gap-2 disabled:opacity-50">
+                {isLoading ? 'Processing...' : 'Create Account'}
               </motion.button>
             </form>
           </div>

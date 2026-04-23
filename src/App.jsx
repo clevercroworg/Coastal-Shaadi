@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 
@@ -17,6 +17,8 @@ import Messaging from './pages/Messaging';
 import Ignored from './pages/Ignored';
 import ForgotPassword from './pages/ForgotPassword';
 import Heartbeat from './components/Heartbeat';
+import AdminDashboard from './pages/AdminDashboard';
+import PendingPage from './pages/PendingPage';
 
 // Context
 import { MemberProvider } from './context/MemberContext';
@@ -25,36 +27,52 @@ import { ToastProvider } from './context/ToastContext';
 // Auth Guard
 import ProtectedRoute from './components/ProtectedRoute';
 
+import AdminLogin from './pages/AdminLogin';
+
+const AppContent = () => {
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith('/admin');
+
+  return (
+    <div className="font-sans text-gray-900 overflow-x-hidden bg-canvas min-h-screen flex flex-col">
+      <Heartbeat />
+      {!isAdminRoute && <Navbar />}
+      <div className="flex-1">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/success-stories" element={<SuccessStoriesPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/pending" element={<PendingPage />} />
+
+          {/* Admin Routes */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+
+          {/* Protected Routes */}
+          <Route path="/active-members" element={<ProtectedRoute><ActiveMembers /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><MyProfile /></ProtectedRoute>} />
+          <Route path="/interests" element={<ProtectedRoute><Interests /></ProtectedRoute>} />
+          <Route path="/shortlist" element={<ProtectedRoute><Shortlist /></ProtectedRoute>} />
+          <Route path="/messaging" element={<ProtectedRoute><Messaging /></ProtectedRoute>} />
+          <Route path="/ignored" element={<ProtectedRoute><Ignored /></ProtectedRoute>} />
+        </Routes>
+      </div>
+      {!isAdminRoute && <Footer />}
+    </div>
+  );
+};
+
 function App() {
   return (
     <ToastProvider>
       <MemberProvider>
-      <BrowserRouter>
-        <div className="font-sans text-gray-900 overflow-x-hidden bg-canvas min-h-screen flex flex-col">
-          <Heartbeat />
-          <Navbar />
-          <div className="flex-1">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/success-stories" element={<SuccessStoriesPage />} />
-              <Route path="/pricing" element={<PricingPage />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-
-              {/* Protected Routes */}
-              <Route path="/active-members" element={<ProtectedRoute><ActiveMembers /></ProtectedRoute>} />
-              <Route path="/profile" element={<ProtectedRoute><MyProfile /></ProtectedRoute>} />
-              <Route path="/interests" element={<ProtectedRoute><Interests /></ProtectedRoute>} />
-              <Route path="/shortlist" element={<ProtectedRoute><Shortlist /></ProtectedRoute>} />
-              <Route path="/messaging" element={<ProtectedRoute><Messaging /></ProtectedRoute>} />
-              <Route path="/ignored" element={<ProtectedRoute><Ignored /></ProtectedRoute>} />
-            </Routes>
-          </div>
-          <Footer />
-        </div>
-      </BrowserRouter>
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
       </MemberProvider>
     </ToastProvider>
   );

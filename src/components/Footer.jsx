@@ -23,7 +23,7 @@ export default function Footer() {
                 </span>
               </div>
               <p className="text-gray-400 text-sm leading-relaxed mb-6">
-                Honouring our community matrimonial traditions across the beautiful Udupi-Mangalore coastal belt. Your privacy, our promise.
+                Honouring our community matrimonial traditions across the beautiful Udupi-Mangalore coastal belt. Your privacy, our promise. <br/><span className="text-accent italic font-medium mt-2 block">One Step to Forever.</span>
               </p>
               <div className="flex gap-3">
                 {['FB', 'IG', 'YT', 'WA'].map((s) => (
@@ -75,17 +75,9 @@ export default function Footer() {
             <div>
               <h4 className="text-accent text-xs font-bold uppercase tracking-[0.15em] mb-6">Get in Touch</h4>
               <ul className="space-y-4">
-                <li className="flex items-start gap-3">
-                  <MapPin size={16} className="text-accent mt-1 shrink-0" />
-                  <span className="text-gray-400 text-sm">Mangalore, Karnataka<br />India 575001</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <Phone size={16} className="text-accent shrink-0" />
-                  <span className="text-gray-400 text-sm">+91 96321 26045</span>
-                </li>
                 <li className="flex items-center gap-3">
                   <Mail size={16} className="text-accent shrink-0" />
-                  <span className="text-gray-400 text-sm">hello@coastalshaadi.com</span>
+                  <span className="text-gray-400 text-sm">support@coastalshaadi.com</span>
                 </li>
               </ul>
             </div>

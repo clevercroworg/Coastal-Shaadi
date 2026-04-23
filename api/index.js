@@ -11,6 +11,7 @@ import User from './models/User.js';
 import Conversation from './models/Conversation.js';
 import Message from './models/Message.js';
 import Connection from './models/Connection.js';
+import { sendPendingEmail, sendApprovalEmail, sendRejectionEmail, sendAdminNotificationEmail } from './utils/email.js';
 
 const app = express();
 app.use(cors());
@@ -74,11 +75,15 @@ app.post('/api/register', async (req, res) => {
     });
 
     await user.save();
+    
+    // Send Pending Verification Email asynchronously
+    sendPendingEmail(user.email, user.firstName).catch(console.error);
+    sendAdminNotificationEmail(user).catch(console.error);
 
     const payload = { user: { id: user.id } };
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 
-    res.status(201).json({ token, user: { id: user.id, firstName, lastName, email, religion, caste, memberId } });
+    res.status(201).json({ token, user: { id: user.id, firstName, lastName, email, religion, caste, memberId, role: user.role, status: user.status } });
   } catch (err) {
     console.error('REGISTER ERROR:', err);
     res.status(500).json({ message: 'Server error', error: err.message, stack: err.stack });
@@ -102,7 +107,7 @@ app.post('/api/login', async (req, res) => {
     const payload = { user: { id: user.id } };
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 
-    res.json({ token, user: { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email, religion: user.religion, caste: user.caste, memberId: user.memberId, profileData: user.profileData, image: user.image } });
+    res.json({ token, user: { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email, religion: user.religion, caste: user.caste, memberId: user.memberId, profileData: user.profileData, image: user.image, role: user.role, status: user.status } });
   } catch (err) {
     console.error('LOGIN ERROR:', err);
     res.status(500).json({ message: 'Server error', error: err.message, stack: err.stack });
@@ -173,8 +178,43 @@ app.get('/api/cloudinary-signature', (req, res) => {
 
 app.get('/api/members', async (req, res) => {
   try {
-    const users = await User.find({}).select('-password');
+    const users = await User.find({ role: 'user', status: 'approved' }).select('-password');
     res.json(users);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ========== ADMIN API ==========
+
+app.get('/api/admin/users', async (req, res) => {
+  try {
+    const users = await User.find({ role: 'user' }).select('-password').sort({ createdAt: -1 });
+    res.json(users);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.put('/api/admin/users/:id/status', async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!['pending', 'approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+    const user = await User.findByIdAndUpdate(req.params.id, { status }, { new: true }).select('-password');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    
+    // Send email notification based on status
+    if (status === 'approved') {
+      sendApprovalEmail(user.email, user.firstName).catch(console.error);
+    } else if (status === 'rejected') {
+      sendRejectionEmail(user.email, user.firstName).catch(console.error);
+    }
+
+    res.json(user);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });

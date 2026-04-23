@@ -53,16 +53,16 @@ export default function DashboardNavbar() {
   return (
     <div className="bg-white border-b border-gray-200 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center w-full">
-          <div className="flex overflow-x-auto py-0 space-x-1 text-sm font-medium flex-1" style={{ scrollbarWidth: 'none' }}>
+        <div className="flex justify-between items-center w-full h-[54px]">
+          <div className="flex overflow-x-auto h-full space-x-1 text-sm font-medium flex-1" style={{ scrollbarWidth: 'none' }}>
             {links.map((link) => (
               <NavLink
                 key={link.path}
                 to={link.path}
                 className={({ isActive }) =>
-                  `flex items-center gap-2 whitespace-nowrap transition-all duration-200 px-4 py-3.5 border-b-2 ${
+                  `flex items-center gap-2 whitespace-nowrap transition-all duration-200 px-4 h-full border-b-2 ${
                     isActive
-                      ? 'text-primary border-primary font-semibold'
+                      ? 'text-primary border-primary'
                       : 'text-gray-500 border-transparent hover:text-primary hover:border-gray-300'
                   }`
                 }

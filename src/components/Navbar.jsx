@@ -46,7 +46,7 @@ export default function Navbar() {
             <img
               src="/logo.svg"
               alt="Coastal Shaadi"
-              className="h-24 max-w-[240px] w-auto transition-all duration-300"
+              className="h-14 lg:h-16 max-w-[240px] w-auto transition-all duration-300"
             />
           </Link>
 

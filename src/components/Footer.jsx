@@ -20,7 +20,7 @@ export default function Footer() {
                 <img
                   src="/logo.svg"
                   alt="Coastal Shaadi"
-                  className="h-16 w-auto"
+                  className="h-10 lg:h-12 w-auto"
                 />
               </div>
               <p className="text-gray-400 text-sm leading-relaxed mb-6">

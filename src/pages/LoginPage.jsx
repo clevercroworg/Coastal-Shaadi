@@ -3,6 +3,10 @@ import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { X } from 'lucide-react';
 
+const maxDate = new Date();
+maxDate.setFullYear(maxDate.getFullYear() - 18);
+const maxDateString = maxDate.toISOString().split('T')[0];
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -196,7 +200,7 @@ export default function LoginPage() {
                   </div>
                   <div>
                     <label className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider mb-1">Date Of Birth</label>
-                    <input type="date" name="dob" value={formData.dob} onChange={handleInputChange} required className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all text-sm" />
+                    <input type="date" name="dob" max={maxDateString} value={formData.dob} onChange={handleInputChange} required className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all text-sm" />
                   </div>
                 </div>
               </>

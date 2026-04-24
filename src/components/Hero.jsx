@@ -9,6 +9,10 @@ const heroImages = [
   { src: "/images/christian-wedding.png", alt: "Church Wedding Ceremony" },
 ];
 
+const maxDate = new Date();
+maxDate.setFullYear(maxDate.getFullYear() - 18);
+const maxDateString = maxDate.toISOString().split('T')[0];
+
 export default function Hero() {
   const [currentImage, setCurrentImage] = useState(0);
   const navigate = useNavigate();
@@ -158,11 +162,23 @@ export default function Hero() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-            <motion.button whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.98 }}
+            <motion.button 
+              onClick={() => {
+                const isLoggedIn = localStorage.getItem('token');
+                if (isLoggedIn) navigate('/profile');
+                else navigate('/login?type=register');
+              }}
+              whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.98 }}
               className="bg-gradient-to-r from-accent to-yellow-500 text-gray-900 px-8 py-4 rounded-full font-bold text-sm sm:text-base shadow-[0_4px_30px_rgba(212,175,55,0.4)] hover:shadow-[0_8px_40px_rgba(212,175,55,0.6)] transition-shadow">
               Start Your Journey
             </motion.button>
-            <motion.button whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.98 }}
+            <motion.button 
+              onClick={() => {
+                const isLoggedIn = localStorage.getItem('token');
+                if (isLoggedIn) navigate('/active-members');
+                else navigate('/login?type=login');
+              }}
+              whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.98 }}
               className="border-2 border-white/30 text-white px-8 py-4 rounded-full font-semibold text-sm sm:text-base hover:bg-white/10 transition-all backdrop-blur-sm">
               Browse Matches
             </motion.button>
@@ -216,7 +232,7 @@ export default function Hero() {
                 </div>
                 <div>
                   <label className="block text-[10px] font-semibold text-white/70 uppercase tracking-wider mb-1">Date Of Birth</label>
-                  <input type="date" name="dob" value={formData.dob} onChange={handleInputChange} required className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-[13px] text-white placeholder-white/30 focus:outline-none focus:border-accent/60 transition-all" />
+                  <input type="date" name="dob" max={maxDateString} value={formData.dob} onChange={handleInputChange} required className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-[13px] text-white placeholder-white/30 focus:outline-none focus:border-accent/60 transition-all" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">

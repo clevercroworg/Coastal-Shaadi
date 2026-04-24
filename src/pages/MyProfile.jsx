@@ -3,19 +3,23 @@ import DashboardNavbar from '../components/DashboardNavbar';
 import { User, Mail, Phone, MapPin, Briefcase, GraduationCap, Map, Camera, Pencil, X, Check, Heart, Calendar, Ruler, Utensils, Shield, Globe, BookOpen, Loader2 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 
-const Field = ({ label, field, icon, profile, editSection, editData, handleChange, type = "text" }) => {
-  const isEditing = editSection && editData[field] !== undefined;
+const maxDate = new Date();
+maxDate.setFullYear(maxDate.getFullYear() - 18);
+const maxDateString = maxDate.toISOString().split('T')[0];
+
+const Field = ({ label, field, icon, profile, isEditing, editData, handleChange, type = "text", ...rest }) => {
   return (
-    <div className="p-4 bg-white">
+    <div className="bg-white">
       <p className="text-[11px] text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
         {icon && icon}
         {label}
       </p>
-      {editSection && isEditing ? (
+      {isEditing ? (
         <input
           type={type}
           value={editData[field] || ''}
           onChange={(e) => handleChange(field, e.target.value)}
+          {...rest}
           className="text-sm font-medium text-gray-900 border border-gray-300 rounded px-2 py-1 w-full focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
         />
       ) : (
@@ -518,50 +522,50 @@ export default function MyProfile() {
             {/* Personal Information */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <SectionHeader icon={<User className="w-4 h-4 text-accent" />} title="Personal Information" section="personal" editSection={editSection} startEdit={startEdit} cancelEdit={cancelEdit} saveEdit={saveEdit} />
-              <div className="grid grid-cols-1 sm:grid-cols-2 border border-gray-100 rounded-lg overflow-hidden divide-y sm:divide-y-0 sm:[&>*:nth-child(odd)]:border-r sm:[&>*:nth-child(-n+2)~*]:border-t divide-gray-100">
-                <Field label="Age / DOB" field="dob" icon={<Calendar className="w-3 h-3" />} profile={profile} editSection={editSection} editData={editData} handleChange={handleChange} type="date" />
-                <Field label="Height" field="height" icon={<Ruler className="w-3 h-3" />} profile={profile} editSection={editSection} editData={editData} handleChange={handleChange} />
-                <Field label="Marital Status" field="maritalStatus" icon={<Heart className="w-3 h-3" />} profile={profile} editSection={editSection} editData={editData} handleChange={handleChange} />
-                <Field label="Profile Created By" field="createdBy" icon={<User className="w-3 h-3" />} profile={profile} editSection={editSection} editData={editData} handleChange={handleChange} />
-                <Field label="Diet" field="diet" icon={<Utensils className="w-3 h-3" />} profile={profile} editSection={editSection} editData={editData} handleChange={handleChange} />
-                <Field label="Any Disability" field="disability" profile={profile} editSection={editSection} editData={editData} handleChange={handleChange} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 pt-2">
+                <Field label="Age / DOB" field="dob" icon={<Calendar className="w-3 h-3" />} profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} type="date" max={maxDateString} />
+                <Field label="Height" field="height" icon={<Ruler className="w-3 h-3" />} profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} />
+                <Field label="Marital Status" field="maritalStatus" icon={<Heart className="w-3 h-3" />} profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} />
+                <Field label="Profile Created By" field="createdBy" icon={<User className="w-3 h-3" />} profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} />
+                <Field label="Diet" field="diet" icon={<Utensils className="w-3 h-3" />} profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} />
+                <Field label="Any Disability" field="disability" profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} />
               </div>
             </div>
 
             {/* Religion & Background */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <SectionHeader icon={<Map className="w-4 h-4 text-accent" />} title="Religion & Background" section="religion" editSection={editSection} startEdit={startEdit} cancelEdit={cancelEdit} saveEdit={saveEdit} />
-              <div className="grid grid-cols-1 sm:grid-cols-2 border border-gray-100 rounded-lg overflow-hidden divide-y sm:divide-y-0 sm:[&>*:nth-child(odd)]:border-r sm:[&>*:nth-child(-n+2)~*]:border-t divide-gray-100">
-                <Field label="Religion" field="religion" icon={<BookOpen className="w-3 h-3" />} profile={profile} editSection={editSection} editData={editData} handleChange={handleChange} />
-                <Field label="Mother Tongue" field="motherTongue" icon={<Globe className="w-3 h-3" />} profile={profile} editSection={editSection} editData={editData} handleChange={handleChange} />
-                <Field label="Caste" field="caste" profile={profile} editSection={editSection} editData={editData} handleChange={handleChange} />
-                <Field label="Sub-Caste" field="subCaste" profile={profile} editSection={editSection} editData={editData} handleChange={handleChange} />
-                <Field label="Gothra / Nakshatra" field="gothra" profile={profile} editSection={editSection} editData={editData} handleChange={handleChange} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 pt-2">
+                <Field label="Religion" field="religion" icon={<BookOpen className="w-3 h-3" />} profile={profile} isEditing={editSection === 'religion'} editData={editData} handleChange={handleChange} />
+                <Field label="Mother Tongue" field="motherTongue" icon={<Globe className="w-3 h-3" />} profile={profile} isEditing={editSection === 'religion'} editData={editData} handleChange={handleChange} />
+                <Field label="Caste" field="caste" profile={profile} isEditing={editSection === 'religion'} editData={editData} handleChange={handleChange} />
+                <Field label="Sub-Caste" field="subCaste" profile={profile} isEditing={editSection === 'religion'} editData={editData} handleChange={handleChange} />
+                <Field label="Gothra / Nakshatra" field="gothra" profile={profile} isEditing={editSection === 'religion'} editData={editData} handleChange={handleChange} />
               </div>
             </div>
 
             {/* Education & Career */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <SectionHeader icon={<Briefcase className="w-4 h-4 text-accent" />} title="Education & Career" section="career" editSection={editSection} startEdit={startEdit} cancelEdit={cancelEdit} saveEdit={saveEdit} />
-              <div className="grid grid-cols-1 sm:grid-cols-2 border border-gray-100 rounded-lg overflow-hidden divide-y sm:divide-y-0 sm:[&>*:nth-child(odd)]:border-r sm:[&>*:nth-child(-n+2)~*]:border-t divide-gray-100">
-                <Field label="Highest Education" field="education" icon={<GraduationCap className="w-3 h-3" />} profile={profile} editSection={editSection} editData={editData} handleChange={handleChange} />
-                <Field label="Profession" field="profession" icon={<Briefcase className="w-3 h-3" />} profile={profile} editSection={editSection} editData={editData} handleChange={handleChange} />
-                <Field label="Company" field="company" profile={profile} editSection={editSection} editData={editData} handleChange={handleChange} />
-                <Field label="Employed In" field="employedIn" profile={profile} editSection={editSection} editData={editData} handleChange={handleChange} />
-                <Field label="Annual Income" field="income" profile={profile} editSection={editSection} editData={editData} handleChange={handleChange} />
-                <Field label="Work Location" field="workLocation" icon={<MapPin className="w-3 h-3" />} profile={profile} editSection={editSection} editData={editData} handleChange={handleChange} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 pt-2">
+                <Field label="Highest Education" field="education" icon={<GraduationCap className="w-3 h-3" />} profile={profile} isEditing={editSection === 'career'} editData={editData} handleChange={handleChange} />
+                <Field label="Profession" field="profession" icon={<Briefcase className="w-3 h-3" />} profile={profile} isEditing={editSection === 'career'} editData={editData} handleChange={handleChange} />
+                <Field label="Company" field="company" profile={profile} isEditing={editSection === 'career'} editData={editData} handleChange={handleChange} />
+                <Field label="Employed In" field="employedIn" profile={profile} isEditing={editSection === 'career'} editData={editData} handleChange={handleChange} />
+                <Field label="Annual Income" field="income" profile={profile} isEditing={editSection === 'career'} editData={editData} handleChange={handleChange} />
+                <Field label="Work Location" field="workLocation" icon={<MapPin className="w-3 h-3" />} profile={profile} isEditing={editSection === 'career'} editData={editData} handleChange={handleChange} />
               </div>
             </div>
 
             {/* Partner Preferences */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <SectionHeader icon={<Heart className="w-4 h-4 text-primary" />} title="Partner Preferences" section="partner" editSection={editSection} startEdit={startEdit} cancelEdit={cancelEdit} saveEdit={saveEdit} />
-              <div className="grid grid-cols-1 sm:grid-cols-2 border border-gray-100 rounded-lg overflow-hidden divide-y sm:divide-y-0 sm:[&>*:nth-child(odd)]:border-r sm:[&>*:nth-child(-n+2)~*]:border-t divide-gray-100">
-                <Field label="Preferred Age" field="partnerAge" profile={profile} editSection={editSection} editData={editData} handleChange={handleChange} />
-                <Field label="Preferred Height" field="partnerHeight" profile={profile} editSection={editSection} editData={editData} handleChange={handleChange} />
-                <Field label="Education" field="partnerEducation" icon={<GraduationCap className="w-3 h-3" />} profile={profile} editSection={editSection} editData={editData} handleChange={handleChange} />
-                <Field label="Profession" field="partnerProfession" icon={<Briefcase className="w-3 h-3" />} profile={profile} editSection={editSection} editData={editData} handleChange={handleChange} />
-                <Field label="Location" field="partnerLocation" icon={<MapPin className="w-3 h-3" />} profile={profile} editSection={editSection} editData={editData} handleChange={handleChange} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 pt-2">
+                <Field label="Preferred Age" field="partnerAge" profile={profile} isEditing={editSection === 'partner'} editData={editData} handleChange={handleChange} />
+                <Field label="Preferred Height" field="partnerHeight" profile={profile} isEditing={editSection === 'partner'} editData={editData} handleChange={handleChange} />
+                <Field label="Education" field="partnerEducation" icon={<GraduationCap className="w-3 h-3" />} profile={profile} isEditing={editSection === 'partner'} editData={editData} handleChange={handleChange} />
+                <Field label="Profession" field="partnerProfession" icon={<Briefcase className="w-3 h-3" />} profile={profile} isEditing={editSection === 'partner'} editData={editData} handleChange={handleChange} />
+                <Field label="Location" field="partnerLocation" icon={<MapPin className="w-3 h-3" />} profile={profile} isEditing={editSection === 'partner'} editData={editData} handleChange={handleChange} />
               </div>
             </div>
 

@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import ScrollToTop from './components/ScrollToTop';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 
@@ -19,6 +20,8 @@ import ForgotPassword from './pages/ForgotPassword';
 import Heartbeat from './components/Heartbeat';
 import AdminDashboard from './pages/AdminDashboard';
 import PendingPage from './pages/PendingPage';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 
 // Context
 import { MemberProvider } from './context/MemberContext';
@@ -47,6 +50,8 @@ const AppContent = () => {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/pending" element={<PendingPage />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsOfService />} />
 
           {/* Admin Routes */}
           <Route path="/admin/login" element={<AdminLogin />} />
@@ -71,6 +76,7 @@ function App() {
     <ToastProvider>
       <MemberProvider>
         <BrowserRouter>
+          <ScrollToTop />
           <AppContent />
         </BrowserRouter>
       </MemberProvider>

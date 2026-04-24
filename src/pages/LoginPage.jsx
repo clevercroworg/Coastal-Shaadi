@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { X } from 'lucide-react';
@@ -16,6 +16,15 @@ export default function LoginPage() {
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('rememberMeEmail');
+    if (savedEmail) {
+      setFormData(prev => ({ ...prev, email: savedEmail }));
+      setRememberMe(true);
+    }
+  }, []);
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -96,6 +105,12 @@ export default function LoginPage() {
         
         if (data.user.role === 'admin') {
           throw new Error('Admins must use the dedicated admin login portal.');
+        }
+
+        if (rememberMe) {
+          localStorage.setItem('rememberMeEmail', formData.email);
+        } else {
+          localStorage.removeItem('rememberMeEmail');
         }
 
         localStorage.setItem('token', data.token);
@@ -287,9 +302,15 @@ export default function LoginPage() {
 
             <div className="flex items-center justify-between text-sm pt-2">
               <label className={`flex items-center gap-2 ${isRegister ? 'text-gray-500 text-xs' : 'text-gray-600'}`}>
-                <input type="checkbox" className="rounded text-primary focus:ring-primary" required={isRegister} />
+                <input 
+                  type="checkbox" 
+                  className="rounded text-primary focus:ring-primary" 
+                  required={isRegister} 
+                  checked={isRegister ? undefined : rememberMe}
+                  onChange={(e) => !isRegister && setRememberMe(e.target.checked)}
+                />
                 {isRegister ? (
-                  <span>By signing up you agree to our <a href="#" className="text-accent hover:underline">terms and conditions.</a></span>
+                  <span>By signing up you agree to our <Link to="/terms" className="text-accent hover:underline">terms and conditions.</Link></span>
                 ) : (
                   "Remember me"
                 )}

@@ -26,7 +26,7 @@ const sendEmail = async (to, subject, html) => {
     return true;
   } catch (error) {
     console.error('Error sending email:', error);
-    return false;
+    throw error; // Rethrow so the API can catch it and return an error to the client
   }
 };
 

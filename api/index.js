@@ -32,17 +32,33 @@ console.log('ENV CHECK:', {
   CLOUDINARY_CLOUD_NAME: !!CLOUDINARY_CLOUD_NAME
 });
 
-// Connect to MongoDB with error handling
-let dbConnected = false;
-mongoose.connect(MONGODB_URI || '')
-  .then(() => { dbConnected = true; console.log('MongoDB Connected'); })
-  .catch(err => console.error('MongoDB Connection Error:', err.message));
+// Serverless-friendly MongoDB Connection Middleware
+let cachedDb = null;
+const connectDB = async (req, res, next) => {
+  if (mongoose.connection.readyState === 1) {
+    return next();
+  }
+  try {
+    if (!cachedDb) {
+      console.log('Connecting to MongoDB...');
+      cachedDb = mongoose.connect(MONGODB_URI || '', {
+        serverSelectionTimeoutMS: 5000, // Fail fast if network issues
+      });
+    }
+    await cachedDb;
+    next();
+  } catch (err) {
+    console.error('MongoDB Connection Error:', err);
+    cachedDb = null;
+    return res.status(500).json({ message: 'Database connection failed: ' + err.message });
+  }
+};
+app.use(connectDB);
 
 // Health check endpoint for debugging
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    dbConnected,
     mongoState: mongoose.connection.readyState, // 0=disconnected, 1=connected, 2=connecting
     envVars: {
       MONGODB_URI: !!MONGODB_URI,
@@ -86,7 +102,7 @@ app.post('/api/register', async (req, res) => {
     res.status(201).json({ token, user: { id: user.id, firstName, lastName, email, religion, caste, memberId, role: user.role, status: user.status, memberType: user.memberType, planExpiry: user.planExpiry, whatsappNumber: user.whatsappNumber, whatsappConsent: user.whatsappConsent } });
   } catch (err) {
     console.error('REGISTER ERROR:', err);
-    res.status(500).json({ message: 'Server error', error: err.message, stack: err.stack });
+    res.status(500).json({ message: 'Server error: ' + err.message, error: err.message, stack: err.stack });
   }
 });
 
@@ -110,7 +126,7 @@ app.post('/api/login', async (req, res) => {
     res.json({ token, user: { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email, religion: user.religion, caste: user.caste, memberId: user.memberId, profileData: user.profileData, image: user.image, role: user.role, status: user.status, memberType: user.memberType, planExpiry: user.planExpiry, whatsappNumber: user.whatsappNumber, whatsappConsent: user.whatsappConsent } });
   } catch (err) {
     console.error('LOGIN ERROR:', err);
-    res.status(500).json({ message: 'Server error', error: err.message, stack: err.stack });
+    res.status(500).json({ message: 'Server error: ' + err.message, error: err.message, stack: err.stack });
   }
 });
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, XCircle, Search, User as UserIcon, LogOut, ShieldCheck } from 'lucide-react';
+import { CheckCircle, XCircle, Search, User as UserIcon, LogOut, ShieldCheck, Crown } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 
 export default function AdminDashboard() {
@@ -26,10 +26,10 @@ export default function AdminDashboard() {
       setLoading(true);
       const res = await fetch('/api/admin/users');
       if (!res.ok) throw new Error('Failed to fetch users');
-      const data = await res.json();
+      const data = await res.json().catch(() => []);
       setUsers(data);
     } catch (err) {
-      showToast('Error fetching users', 'error');
+      showToast('Unable to load users. Please check your connection.', 'error');
     } finally {
       setLoading(false);
     }
@@ -47,7 +47,7 @@ export default function AdminDashboard() {
       setUsers(users.map(u => u._id === userId ? { ...u, status: newStatus } : u));
       showToast(`User status updated to ${newStatus}`, 'success');
     } catch (err) {
-      showToast('Failed to update user status', 'error');
+      showToast('Failed to update user status. Please try again.', 'error');
     }
   };
 
@@ -127,6 +127,7 @@ export default function AdminDashboard() {
                   <th className="px-6 py-4 font-semibold">User Details</th>
                   <th className="px-6 py-4 font-semibold">Contact Info</th>
                   <th className="px-6 py-4 font-semibold">Demographics</th>
+                  <th className="px-6 py-4 font-semibold text-center">Plan</th>
                   <th className="px-6 py-4 font-semibold">Registration Date</th>
                   <th className="px-6 py-4 font-semibold text-center">Status</th>
                   <th className="px-6 py-4 font-semibold text-center">Actions</th>
@@ -135,7 +136,7 @@ export default function AdminDashboard() {
               <tbody className="divide-y divide-gray-100">
                 {loading ? (
                   <tr>
-                    <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
                       <div className="flex flex-col items-center justify-center">
                         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
                         <p>Loading users...</p>
@@ -144,7 +145,7 @@ export default function AdminDashboard() {
                   </tr>
                 ) : filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
                       No users found matching your criteria.
                     </td>
                   </tr>
@@ -174,6 +175,17 @@ export default function AdminDashboard() {
                       <td className="px-6 py-4">
                         <div className="text-sm text-gray-900">{user.religion} - {user.caste}</div>
                         <div className="text-xs text-gray-500">{user.gender || 'N/A'}, {user.dob || 'N/A'} (For: {user.onBehalf || 'Self'})</div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border ${
+                          user.memberType === 'Elite' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                          user.memberType === 'Premium' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                          user.memberType === 'Basic' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                          'bg-gray-50 text-gray-600 border-gray-200'
+                        }`}>
+                          {user.memberType === 'Elite' && <Crown size={12} />}
+                          {user.memberType || 'Free'}
+                        </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
                         {new Date(user.createdAt).toLocaleDateString()}

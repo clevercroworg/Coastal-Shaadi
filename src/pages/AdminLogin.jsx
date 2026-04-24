@@ -25,8 +25,13 @@ export default function AdminLogin() {
         body: JSON.stringify(formData)
       });
       
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Login failed');
+      let data;
+      try {
+        data = await res.json();
+      } catch (err) {
+        throw new Error('Admin server unavailable. Please try again later.');
+      }
+      if (!res.ok) throw new Error(data?.message || 'Authentication failed.');
 
       if (data.user.role !== 'admin') {
         throw new Error('Access denied: Admin privileges required.');

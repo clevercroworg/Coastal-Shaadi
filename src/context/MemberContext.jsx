@@ -31,24 +31,34 @@ export const MemberProvider = ({ children }) => {
             return age;
           };
 
-          const formattedMembers = data.map(user => ({
-            id: user.memberId || user._id,
-            name: `${user.firstName} ${user.lastName}`,
-            type: 'Premium', // Defaulting for dev UI
-            age: calculateAge(user.dob) !== '-' ? calculateAge(user.dob) : (user.profileData?.age || '-'),
-            height: user.profileData?.height || '-',
-            religion: user.religion || '-',
-            caste: user.caste || '-',
-            subCaste: user.profileData?.subCaste || '-',
-            language: user.profileData?.motherTongue || '-',
-            maritalStatus: user.profileData?.maritalStatus || '-',
-            profession: user.profileData?.profession || '-',
-            country: user.profileData?.country || '-',
-            state: user.profileData?.state || '-',
-            city: user.profileData?.city || '-',
-            location: [user.profileData?.city, user.profileData?.state, user.profileData?.country].filter(l => l && l !== '-').join(', ') || '-',
-            image: user.image || null
-          }));
+          const boostRegions = ['udupi', 'mangalore', 'mangaluru', 'manipal', 'kundapura', 'karwar', 'kasaragod'];
+          const formattedMembers = data.map(user => {
+            const city = (user.profileData?.city || '').toLowerCase();
+            const isElite = user.memberType === 'Elite';
+            const isBoosted = isElite && boostRegions.some(r => city.includes(r));
+            return {
+              id: user.memberId || user._id,
+              memberId: user.memberId,
+              name: `${user.firstName} ${user.lastName}`,
+              type: user.memberType || 'Premium',
+              age: calculateAge(user.dob) !== '-' ? calculateAge(user.dob) : (user.profileData?.age || '-'),
+              height: user.profileData?.height || '-',
+              religion: user.religion || '-',
+              caste: user.caste || '-',
+              subCaste: user.profileData?.subCaste || '-',
+              language: user.profileData?.motherTongue || '-',
+              maritalStatus: user.profileData?.maritalStatus || '-',
+              profession: user.profileData?.profession || '-',
+              country: user.profileData?.country || '-',
+              state: user.profileData?.state || '-',
+              city: user.profileData?.city || '-',
+              location: [user.profileData?.city, user.profileData?.state, user.profileData?.country].filter(l => l && l !== '-').join(', ') || '-',
+              image: user.image || null,
+              whatsappConsent: user.whatsappConsent || false,
+              whatsappNumber: user.whatsappNumber || '',
+              isBoosted
+            };
+          });
           setMembers(formattedMembers);
         }
       } catch (error) {

@@ -83,7 +83,7 @@ app.post('/api/register', async (req, res) => {
     const payload = { user: { id: user.id } };
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 
-    res.status(201).json({ token, user: { id: user.id, firstName, lastName, email, religion, caste, memberId, role: user.role, status: user.status } });
+    res.status(201).json({ token, user: { id: user.id, firstName, lastName, email, religion, caste, memberId, role: user.role, status: user.status, memberType: user.memberType, planExpiry: user.planExpiry, whatsappNumber: user.whatsappNumber, whatsappConsent: user.whatsappConsent } });
   } catch (err) {
     console.error('REGISTER ERROR:', err);
     res.status(500).json({ message: 'Server error', error: err.message, stack: err.stack });
@@ -107,7 +107,7 @@ app.post('/api/login', async (req, res) => {
     const payload = { user: { id: user.id } };
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 
-    res.json({ token, user: { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email, religion: user.religion, caste: user.caste, memberId: user.memberId, profileData: user.profileData, image: user.image, role: user.role, status: user.status } });
+    res.json({ token, user: { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email, religion: user.religion, caste: user.caste, memberId: user.memberId, profileData: user.profileData, image: user.image, role: user.role, status: user.status, memberType: user.memberType, planExpiry: user.planExpiry, whatsappNumber: user.whatsappNumber, whatsappConsent: user.whatsappConsent } });
   } catch (err) {
     console.error('LOGIN ERROR:', err);
     res.status(500).json({ message: 'Server error', error: err.message, stack: err.stack });
@@ -116,7 +116,7 @@ app.post('/api/login', async (req, res) => {
 
 app.put('/api/profile', async (req, res) => {
   try {
-    const { userId, profileData, image } = req.body;
+    const { userId, profileData, image, whatsappNumber, whatsappConsent } = req.body;
     if (!userId) return res.status(400).json({ message: 'User ID is required' });
 
     let user;
@@ -142,6 +142,8 @@ app.put('/api/profile', async (req, res) => {
       });
     }
     if (image !== undefined) updateData.image = image;
+    if (whatsappNumber !== undefined) updateData.whatsappNumber = whatsappNumber;
+    if (whatsappConsent !== undefined) updateData.whatsappConsent = whatsappConsent;
 
     const updatedUser = await User.findOneAndUpdate({ _id: user._id }, updateData, { new: true });
     res.json({ message: 'Profile updated successfully', user: updatedUser });
@@ -187,7 +189,27 @@ app.get('/api/cloudinary-signature', (req, res) => {
 
 app.get('/api/members', async (req, res) => {
   try {
-    const users = await User.find({ role: 'user', status: 'approved' }).select('-password');
+    const users = await User.find({ role: 'user', status: 'approved' }).select('-password').lean();
+
+    // Boost regions for Elite plan
+    const boostRegions = ['udupi', 'mangalore', 'mangaluru', 'manipal', 'kundapura', 'karwar', 'kasaragod'];
+
+    // Sort: Elite + boost region first → Elite others → rest
+    users.sort((a, b) => {
+      const aIsElite = a.memberType === 'Elite' ? 1 : 0;
+      const bIsElite = b.memberType === 'Elite' ? 1 : 0;
+
+      const aCity = (a.profileData?.city || '').toLowerCase();
+      const bCity = (b.profileData?.city || '').toLowerCase();
+      const aIsBoosted = aIsElite && boostRegions.some(r => aCity.includes(r)) ? 1 : 0;
+      const bIsBoosted = bIsElite && boostRegions.some(r => bCity.includes(r)) ? 1 : 0;
+
+      // Boosted Elite first, then other Elite, then rest
+      if (bIsBoosted !== aIsBoosted) return bIsBoosted - aIsBoosted;
+      if (bIsElite !== aIsElite) return bIsElite - aIsElite;
+      return new Date(b.createdAt) - new Date(a.createdAt); // newest first within tiers
+    });
+
     res.json(users);
   } catch (err) {
     console.error(err);
@@ -230,6 +252,47 @@ app.put('/api/admin/users/:id/status', async (req, res) => {
   }
 });
 
+// Admin: Update user's membership plan (CMS-ready)
+app.put('/api/admin/users/:id/plan', async (req, res) => {
+  try {
+    const { memberType, planExpiry } = req.body;
+    if (!['Free', 'Basic', 'Premium', 'Elite'].includes(memberType)) {
+      return res.status(400).json({ message: 'Invalid plan type' });
+    }
+    const updateData = { memberType };
+    if (planExpiry) updateData.planExpiry = new Date(planExpiry);
+
+    const user = await User.findByIdAndUpdate(req.params.id, updateData, { new: true }).select('-password');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    res.json(user);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Auto-migrate: Set all existing users without memberType to 'Elite' & clean profileData
+(async () => {
+  try {
+    await mongoose.connection.asPromise();
+    // Set memberType for users who don't have it, or have it as null/empty
+    const result = await User.updateMany(
+      { $or: [{ memberType: { $exists: false } }, { memberType: null }, { memberType: '' }] },
+      { $set: { memberType: 'Elite' } }
+    );
+    if (result.modifiedCount > 0) {
+      console.log(`Migrated ${result.modifiedCount} users to Elite plan`);
+    }
+    // Clean stale memberType from inside profileData for all users
+    await User.updateMany(
+      { 'profileData.memberType': { $exists: true } },
+      { $unset: { 'profileData.memberType': '' } }
+    );
+  } catch (e) {
+    // Will run once DB is connected
+  }
+})();
 app.post('/api/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
@@ -250,6 +313,26 @@ app.post('/api/forgot-password', async (req, res) => {
     await sendOtpEmail(user.email, otp, user.firstName);
 
     res.json({ message: 'OTP sent successfully to your email address.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.post('/api/verify-otp', async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    const user = await User.findOne({ 
+      email,
+      resetOtp: otp,
+      resetOtpExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired OTP' });
+    }
+
+    res.json({ message: 'OTP verified successfully' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });

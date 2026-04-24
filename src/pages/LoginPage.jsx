@@ -81,8 +81,13 @@ export default function LoginPage() {
           body: JSON.stringify({ ...formData, religion, caste })
         });
         
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || 'Registration failed');
+        let data;
+        try {
+          data = await res.json();
+        } catch (err) {
+          throw new Error('Registration server unavailable. Please try again later.');
+        }
+        if (!res.ok) throw new Error(data?.message || 'Registration failed. Please check your inputs.');
         
         localStorage.setItem('token', data.token);
         localStorage.setItem('userFilter', JSON.stringify({ religion, caste }));
@@ -100,8 +105,13 @@ export default function LoginPage() {
           body: JSON.stringify({ email: formData.email, password: formData.password })
         });
         
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || 'Login failed');
+        let data;
+        try {
+          data = await res.json();
+        } catch (err) {
+          throw new Error('Login server unavailable. Please check your connection and try again.');
+        }
+        if (!res.ok) throw new Error(data?.message || 'Login failed. Invalid email or password.');
         
         if (data.user.role === 'admin') {
           throw new Error('Admins must use the dedicated admin login portal.');

@@ -61,6 +61,9 @@ export default function MyProfile() {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
   const { showToast } = useToast();
+  const [whatsappNumber, setWhatsappNumber] = useState(userData?.whatsappNumber || '');
+  const [whatsappConsent, setWhatsappConsent] = useState(userData?.whatsappConsent || false);
+  const [isSavingWhatsapp, setIsSavingWhatsapp] = useState(false);
 
   const calculateAge = (dob) => {
     if (!dob || dob === '-') return '-';
@@ -81,12 +84,17 @@ export default function MyProfile() {
     try {
       const res = await fetch(`/api/profile/${actualUserId}`);
       if (res.ok) {
-        const latestUser = await res.json();
+        let latestUser;
+        try { latestUser = await res.json(); } catch { return; }
         const newUserData = { ...userData, ...latestUser };
         localStorage.setItem('userProfile', JSON.stringify(newUserData));
         window.dispatchEvent(new Event('profileUpdated'));
         
         setProfileImage(latestUser.image);
+        setWhatsappNumber(latestUser.whatsappNumber || '');
+        setWhatsappConsent(latestUser.whatsappConsent || false);
+        // Destructure memberType out of profileData to prevent stale override
+        const { memberType: _ignoredType, ...cleanProfileData } = latestUser.profileData || {};
         setProfile(prev => ({
           ...prev,
           name: `${latestUser.firstName} ${latestUser.lastName}`,
@@ -95,12 +103,35 @@ export default function MyProfile() {
           religion: latestUser.religion || prev.religion,
           caste: latestUser.caste || prev.caste,
           dob: latestUser.dob || prev.dob,
-          ...latestUser.profileData,
-          age: calculateAge(latestUser.dob) !== '-' ? calculateAge(latestUser.dob) : (latestUser.profileData?.age || prev.age)
+          ...cleanProfileData,
+          age: calculateAge(latestUser.dob) !== '-' ? calculateAge(latestUser.dob) : (cleanProfileData?.age || prev.age),
+          // memberType MUST come from the top-level DB field, never from profileData
+          memberType: latestUser.memberType || prev.memberType || 'Elite',
         }));
       }
     } catch (e) {
       console.error('Failed to fetch latest profile', e);
+    }
+  };
+
+  const saveWhatsappSettings = async () => {
+    const actualUserId = userData?.id || userData?._id || userData?.memberId;
+    if (!actualUserId) return;
+    setIsSavingWhatsapp(true);
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: actualUserId, whatsappNumber, whatsappConsent })
+      });
+      if (!res.ok) throw new Error('Failed to save');
+      const newUserData = { ...JSON.parse(localStorage.getItem('userProfile') || '{}'), whatsappNumber, whatsappConsent };
+      localStorage.setItem('userProfile', JSON.stringify(newUserData));
+      showToast('WhatsApp settings saved!', 'success');
+    } catch (err) {
+      showToast('Failed to save WhatsApp settings. Please try again.', 'error');
+    } finally {
+      setIsSavingWhatsapp(false);
     }
   };
 
@@ -111,7 +142,7 @@ export default function MyProfile() {
   const [profile, setProfile] = useState({
     name: userData ? `${userData.firstName} ${userData.lastName}` : '',
     memberId: userData?.memberId || '',
-    memberType: 'Free',
+    memberType: userData?.memberType || 'Elite',
     email: userData?.email || '',
     phone: userData?.phone || '',
     city: userData?.profileData?.city || '-',
@@ -165,15 +196,18 @@ export default function MyProfile() {
     const actualUserId = userData?.id || userData?._id || userData?.memberId;
     if (actualUserId) {
       try {
+        // Strip fields that should NOT be saved inside profileData
+        const { memberType, memberId, name, ...cleanEditData } = editData;
         const updateRes = await fetch('/api/profile', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: actualUserId, profileData: editData })
+          body: JSON.stringify({ userId: actualUserId, profileData: cleanEditData })
         });
         
         if (!updateRes.ok) {
-          const errData = await updateRes.json();
-          throw new Error(errData.message || 'Failed to save to database');
+          let errData;
+          try { errData = await updateRes.json(); } catch { errData = { message: 'Server is currently unavailable.' }; }
+          throw new Error(errData.message);
         }
         
         const newUserData = { ...userData, profileData: { ...userData.profileData, ...editData } };
@@ -209,7 +243,13 @@ export default function MyProfile() {
       }
 
       const sigRes = await fetch(`/api/cloudinary-signature${existingPublicId ? `?public_id=${existingPublicId}` : ''}`);
-      const { timestamp, signature, apiKey, cloudName } = await sigRes.json();
+      let sigData;
+      try {
+        sigData = await sigRes.json();
+      } catch (err) {
+        throw new Error('Image upload server unavailable. Please try again later.');
+      }
+      const { timestamp, signature, apiKey, cloudName } = sigData;
 
       const formData = new FormData();
       formData.append('file', file);
@@ -237,7 +277,11 @@ export default function MyProfile() {
             body: JSON.stringify({ userId: actualUserId, image: data.secure_url })
           });
           
-          if (!updateRes.ok) throw new Error('Failed to update profile in database');
+          if (!updateRes.ok) {
+             let errData;
+             try { errData = await updateRes.json(); } catch { errData = { message: 'Database connection failed.' }; }
+             throw new Error(errData.message || 'Failed to update profile in database');
+          }
 
           const newUserData = { ...JSON.parse(localStorage.getItem('userProfile') || '{}'), image: data.secure_url };
           localStorage.setItem('userProfile', JSON.stringify(newUserData));
@@ -265,7 +309,11 @@ export default function MyProfile() {
           body: JSON.stringify({ userId: actualUserId, image: null })
         });
         
-        if (!updateRes.ok) throw new Error('Failed to remove profile image in database');
+        if (!updateRes.ok) {
+           let errData;
+           try { errData = await updateRes.json(); } catch { errData = { message: 'Database connection failed.' }; }
+           throw new Error(errData.message || 'Failed to remove profile image in database');
+        }
 
         const newUserData = { ...JSON.parse(localStorage.getItem('userProfile') || '{}'), image: null };
         localStorage.setItem('userProfile', JSON.stringify(newUserData));
@@ -293,7 +341,12 @@ export default function MyProfile() {
           {/* Banner */}
           <div className="h-44 bg-gradient-to-br from-[#800000] via-[#6b0000] to-[#4a0000] relative overflow-hidden">
             <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }}></div>
-            <div className="absolute top-5 right-6 bg-white/15 backdrop-blur-md px-4 py-1.5 rounded-full text-white text-xs font-semibold tracking-widest border border-white/20">
+            <div className={`absolute top-5 right-6 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-semibold tracking-widest border ${
+              profile.memberType === 'Elite'
+                ? 'bg-gradient-to-r from-accent/90 to-yellow-500/90 text-gray-900 border-accent/40 shadow-lg shadow-accent/20'
+                : 'bg-white/15 text-white border-white/20'
+            }`}>
+              {profile.memberType === 'Elite' && <span className="mr-1">👑</span>}
               {profile.memberType.toUpperCase()} MEMBER
             </div>
             {/* Decorative gold line */}
@@ -511,6 +564,73 @@ export default function MyProfile() {
                 <Field label="Location" field="partnerLocation" icon={<MapPin className="w-3 h-3" />} profile={profile} editSection={editSection} editData={editData} handleChange={handleChange} />
               </div>
             </div>
+
+            {/* WhatsApp Connectivity (Elite Feature) */}
+            {profile.memberType === 'Elite' && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <div className="flex items-center justify-between mb-4 border-b border-gray-200 pb-3">
+                  <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-green-500" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                    WhatsApp Connectivity
+                    <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-gradient-to-r from-accent/20 to-yellow-500/20 text-accent tracking-wider">Elite</span>
+                  </h2>
+                </div>
+                
+                <div className="space-y-5">
+                  {/* Consent Toggle */}
+                  <div className="flex items-start gap-4 p-4 bg-green-50/50 rounded-xl border border-green-100">
+                    <div className="shrink-0 pt-0.5">
+                      <button
+                        onClick={() => setWhatsappConsent(!whatsappConsent)}
+                        className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors duration-300 focus:outline-none ${whatsappConsent ? 'bg-green-500' : 'bg-gray-300'}`}
+                        role="switch"
+                        aria-checked={whatsappConsent}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition-transform duration-300 ${whatsappConsent ? 'translate-x-[22px]' : 'translate-x-[3px]'}`}
+                        />
+                      </button>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">Allow members to contact me on WhatsApp</p>
+                      <p className="text-xs text-gray-500 mt-1">When enabled, Elite members who view your profile can open a WhatsApp chat with you. Your number will not be visibly displayed.</p>
+                    </div>
+                  </div>
+
+                  {/* WhatsApp Number Input */}
+                  {whatsappConsent && (
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">WhatsApp Number</label>
+                      <div className="flex gap-2">
+                        <span className="inline-flex items-center px-3 py-2.5 bg-gray-100 border border-gray-200 rounded-lg text-sm text-gray-600 font-medium">+91</span>
+                        <input
+                          type="tel"
+                          value={whatsappNumber}
+                          onChange={(e) => setWhatsappNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                          placeholder="Enter 10-digit number"
+                          maxLength={10}
+                          className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none transition-all text-sm"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1.5">This can be different from your registered phone number.</p>
+                    </div>
+                  )}
+
+                  {/* Save Button */}
+                  <button
+                    onClick={saveWhatsappSettings}
+                    disabled={isSavingWhatsapp || (whatsappConsent && whatsappNumber.length !== 10)}
+                    className="w-full sm:w-auto px-6 py-2.5 bg-green-600 text-white rounded-xl font-semibold text-sm hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isSavingWhatsapp ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
+                    ) : (
+                      <><Check className="w-4 h-4" /> Save WhatsApp Settings</>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
 
           </div>
         </div>

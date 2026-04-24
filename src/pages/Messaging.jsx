@@ -54,7 +54,7 @@ export default function Messaging() {
     try {
       const res = await fetch(`/api/conversations/${currentUserId}`);
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json().catch(() => []);
         setConversations(data);
 
         // Check if we should auto-open a conversation from URL or pending chat
@@ -85,7 +85,7 @@ export default function Messaging() {
     try {
       const res = await fetch(`/api/messages/${convId}`);
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json().catch(() => []);
         setMessages(data);
       }
       // Mark messages as read
@@ -115,7 +115,7 @@ export default function Messaging() {
       if (otherUser?._id) {
         const res = await fetch(`/api/online/${otherUser._id}`);
         if (res.ok) {
-          const data = await res.json();
+          const data = await res.json().catch(() => ({ online: false }));
           setContactOnline(data.online);
         }
       }

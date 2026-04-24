@@ -1,44 +1,40 @@
-import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+dotenv.config();
+import mongoose from 'mongoose';
 import User from './api/models/User.js';
 import Connection from './api/models/Connection.js';
 import Conversation from './api/models/Conversation.js';
 import Message from './api/models/Message.js';
 
-dotenv.config();
-
-const cleanup = async () => {
-  try {
-    await mongoose.connect(process.env.MONGODB_URI);
-
-    // Delete all non-admin users
-    const users = await User.find({ role: { $ne: 'admin' } });
-    console.log(`Found ${users.length} non-admin user(s) to delete:`);
-    for (const u of users) {
-      console.log(`  - ${u.email} (${u.firstName} ${u.lastName})`);
+async function cleanup() {
+  await mongoose.connect(process.env.MONGODB_URI);
+  console.log('Connected to DB');
+  
+  const conversations = await Conversation.find();
+  let deletedCount = 0;
+  
+  for (let conv of conversations) {
+    if (conv.participants.length < 2) continue;
+    const p1 = conv.participants[0];
+    const p2 = conv.participants[1];
+    
+    // Check if there's an accepted connection
+    const connection = await Connection.findOne({
+      $or: [
+        { senderId: p1, receiverId: p2, status: 'accepted' },
+        { senderId: p2, receiverId: p1, status: 'accepted' }
+      ]
+    });
+    
+    if (!connection) {
+      console.log(`Deleting invalid conversation ${conv._id} between ${p1} and ${p2}`);
+      await Message.deleteMany({ conversationId: conv._id });
+      await Conversation.findByIdAndDelete(conv._id);
+      deletedCount++;
     }
-
-    await User.deleteMany({ role: { $ne: 'admin' } });
-    console.log('Deleted all non-admin users.');
-
-    // Clean up all connections, conversations, and messages
-    const connDel = await Connection.deleteMany({});
-    const convDel = await Conversation.deleteMany({});
-    const msgDel = await Message.deleteMany({});
-    console.log(`Deleted ${connDel.deletedCount} connections, ${convDel.deletedCount} conversations, ${msgDel.deletedCount} messages.`);
-
-    // Show remaining users
-    const remaining = await User.find({});
-    console.log(`\nRemaining users (${remaining.length}):`);
-    for (const u of remaining) {
-      console.log(`  - ${u.email} (role: ${u.role})`);
-    }
-
-    process.exit(0);
-  } catch (err) {
-    console.error(err);
-    process.exit(1);
   }
-};
-
+  
+  console.log(`Cleanup complete. Deleted ${deletedCount} invalid conversations.`);
+  process.exit(0);
+}
 cleanup();

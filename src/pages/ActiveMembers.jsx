@@ -28,6 +28,9 @@ export default function ActiveMembers() {
   };
 
   const [filters, setFilters] = useState(getInitialFilters);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+  const [showFilters, setShowFilters] = useState(false);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [upgradeFeature, setUpgradeFeature] = useState('');
   const [selectedMember, setSelectedMember] = useState(null);
@@ -44,10 +47,12 @@ export default function ActiveMembers() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFilters(prev => ({ ...prev, [name]: value }));
+    setCurrentPage(1); // Reset page on filter change
   };
 
   const resetFilters = () => {
     setFilters(getInitialFilters());
+    setCurrentPage(1);
   };
 
   // Parse height string like "5.10" into a float for comparison
@@ -77,6 +82,21 @@ export default function ActiveMembers() {
     }
     return true;
   });
+
+  const totalPages = Math.ceil(filteredMembers.length / ITEMS_PER_PAGE);
+  const paginatedMembers = filteredMembers.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    for (let i = 1; i <= totalPages; i++) {
+      if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+        pages.push(i);
+      } else if (pages[pages.length - 1] !== '...') {
+        pages.push('...');
+      }
+    }
+    return pages;
+  };
 
   // Get cascaded unique values based on current filters for dynamic dropdowns
   const religions = getUniqueValues('religion');
@@ -113,7 +133,7 @@ export default function ActiveMembers() {
         <div className="flex flex-col lg:flex-row gap-6">
 
           {/* Advanced Search Sidebar */}
-          <div className="w-full lg:w-[280px] shrink-0">
+          <div className={`w-full lg:w-[280px] shrink-0 ${showFilters ? 'block' : 'hidden lg:block'}`}>
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 sticky top-24">
               <div className="flex items-center justify-between mb-5">
                 <h3 className="text-gray-900 font-bold uppercase text-xs tracking-wider">Advanced Search</h3>
@@ -208,7 +228,7 @@ export default function ActiveMembers() {
 
                 {/* Result count */}
                 <div className="text-xs text-gray-400 italic text-center pt-1">
-                  Showing {filteredMembers.length} of {members.length} members
+                  Showing {filteredMembers.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredMembers.length)} of {filteredMembers.length} members
                 </div>
               </div>
             </div>
@@ -216,11 +236,19 @@ export default function ActiveMembers() {
 
           {/* Members List */}
           <div className="flex-1">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">All Active Members</h2>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-gray-900">All Active Members</h2>
+              <button 
+                onClick={() => setShowFilters(!showFilters)}
+                className="lg:hidden flex items-center gap-2 bg-white border border-gray-200 px-3 py-1.5 rounded-lg text-sm font-medium shadow-sm text-gray-700"
+              >
+                <Search className="w-4 h-4 text-primary" /> {showFilters ? 'Hide Filters' : 'Show Filters'}
+              </button>
+            </div>
 
             <div className="space-y-4">
-              {filteredMembers.length > 0 ? (
-                filteredMembers.map((member) => (
+              {paginatedMembers.length > 0 ? (
+                paginatedMembers.map((member) => (
                   <MemberCard key={member.id} member={member} onUpgradePrompt={triggerUpgrade} onViewProfile={() => viewProfile(member)} />
                 ))
               ) : (
@@ -233,11 +261,41 @@ export default function ActiveMembers() {
               )}
             </div>
 
-            {filteredMembers.length > 0 && (
+            {totalPages > 1 && (
               <div className="flex justify-center items-center gap-2 mt-8">
-                <button className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"><ChevronLeft className="w-4 h-4" /></button>
-                <button className="w-8 h-8 rounded-full flex items-center justify-center bg-primary text-white font-medium text-sm shadow-md">1</button>
-                <button className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"><ChevronRight className="w-4 h-4" /></button>
+                <button 
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                
+                {getPageNumbers().map((pageNum, idx) => (
+                  pageNum === '...' ? (
+                    <span key={`dots-${idx}`} className="text-gray-400 px-1">...</span>
+                  ) : (
+                    <button 
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center font-medium text-sm transition-all ${
+                        currentPage === pageNum 
+                          ? 'bg-primary text-white shadow-md' 
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  )
+                ))}
+
+                <button 
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
               </div>
             )}
           </div>

@@ -17,11 +17,25 @@ export const MemberProvider = ({ children }) => {
         const response = await fetch('/api/members');
         if (response.ok) {
           const data = await response.json();
+          
+          const calculateAge = (dob) => {
+            if (!dob || dob === '-') return '-';
+            const birthDate = new Date(dob);
+            if (isNaN(birthDate.getTime())) return '-';
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+              age--;
+            }
+            return age;
+          };
+
           const formattedMembers = data.map(user => ({
             id: user.memberId || user._id,
             name: `${user.firstName} ${user.lastName}`,
             type: 'Premium', // Defaulting for dev UI
-            age: user.profileData?.age || '-',
+            age: calculateAge(user.dob) !== '-' ? calculateAge(user.dob) : (user.profileData?.age || '-'),
             height: user.profileData?.height || '-',
             religion: user.religion || '-',
             caste: user.caste || '-',
@@ -32,7 +46,7 @@ export const MemberProvider = ({ children }) => {
             country: user.profileData?.country || '-',
             state: user.profileData?.state || '-',
             city: user.profileData?.city || '-',
-            location: user.profileData?.location || `${user.profileData?.city || '-'}, ${user.profileData?.country || '-'}`,
+            location: [user.profileData?.city, user.profileData?.state, user.profileData?.country].filter(l => l && l !== '-').join(', ') || '-',
             image: user.image || null
           }));
           setMembers(formattedMembers);

@@ -11,7 +11,7 @@ import User from './models/User.js';
 import Conversation from './models/Conversation.js';
 import Message from './models/Message.js';
 import Connection from './models/Connection.js';
-import { sendPendingEmail, sendApprovalEmail, sendRejectionEmail, sendAdminNotificationEmail } from './utils/email.js';
+import { sendPendingEmail, sendApprovalEmail, sendRejectionEmail, sendAdminNotificationEmail, sendOtpEmail } from './utils/email.js';
 
 const app = express();
 app.use(cors());
@@ -96,12 +96,12 @@ app.post('/api/login', async (req, res) => {
 
     let user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ message: 'Invalid Credentials' });
+      return res.status(400).json({ message: 'No account found with this email address. Please register.' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ message: 'Invalid Credentials' });
+      return res.status(400).json({ message: 'Incorrect password. Please try again.' });
     }
 
     const payload = { user: { id: user.id } };
@@ -131,6 +131,15 @@ app.put('/api/profile', async (req, res) => {
     const updateData = {};
     if (profileData) {
       updateData.profileData = { ...user.profileData, ...profileData };
+      
+      // Extract top-level fields
+      const topLevelFields = ['firstName', 'lastName', 'email', 'phone', 'dob', 'religion', 'caste', 'gender'];
+      topLevelFields.forEach(field => {
+        if (profileData[field] !== undefined) {
+          updateData[field] = profileData[field];
+          delete updateData.profileData[field];
+        }
+      });
     }
     if (image !== undefined) updateData.image = image;
 
@@ -236,8 +245,11 @@ app.post('/api/forgot-password', async (req, res) => {
     await user.save();
 
     console.log(`\n\n=== PASSWORD RESET OTP FOR ${email}: ${otp} ===\n\n`);
+    
+    // Send email with OTP
+    await sendOtpEmail(user.email, otp, user.firstName);
 
-    res.json({ message: 'OTP generated successfully. (Check the backend terminal console to see the OTP)' });
+    res.json({ message: 'OTP sent successfully to your email address.' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });

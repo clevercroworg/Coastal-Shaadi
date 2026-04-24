@@ -1,10 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, User, Heart, Star, Ban, MessageCircle, LogOut } from 'lucide-react';
+import { LayoutDashboard, User, Heart, Star, Ban, MessageCircle, LogOut, ChevronRight } from 'lucide-react';
 
 export default function DashboardNavbar() {
   const [unreadMsgCount, setUnreadMsgCount] = useState(0);
   const [pendingInterestCount, setPendingInterestCount] = useState(0);
+  const scrollContainerRef = useRef(null);
+  const [showRightShadow, setShowRightShadow] = useState(true);
+
+  const handleScroll = () => {
+    if (scrollContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
+      setShowRightShadow(scrollLeft + clientWidth < scrollWidth - 5);
+    }
+  };
 
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -37,7 +46,15 @@ export default function DashboardNavbar() {
     fetchNotifications();
     // Refresh notifications every 30 seconds
     const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
+    
+    // Check initial scroll state and listen to resize
+    setTimeout(handleScroll, 100);
+    window.addEventListener('resize', handleScroll);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('resize', handleScroll);
+    };
   }, []);
 
   const links = [
@@ -51,10 +68,15 @@ export default function DashboardNavbar() {
 
 
   return (
-    <div className="bg-white border-b border-gray-200 shadow-sm">
+    <div className="bg-white border-b border-gray-200 shadow-sm relative z-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center w-full h-[54px]">
-          <div className="flex overflow-x-auto h-full space-x-1 text-sm font-medium flex-1" style={{ scrollbarWidth: 'none' }}>
+        <div className="flex justify-between items-center w-full h-[54px] relative">
+          <div 
+            ref={scrollContainerRef}
+            onScroll={handleScroll}
+            className="flex overflow-x-auto h-full space-x-1 text-sm font-medium flex-1 hide-scrollbar" 
+            style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
+          >
             {links.map((link) => (
               <NavLink
                 key={link.path}
@@ -75,6 +97,12 @@ export default function DashboardNavbar() {
                 )}
               </NavLink>
             ))}
+          </div>
+          
+          {/* Mobile Scroll Indicator (Right) */}
+          <div className={`absolute top-0 right-0 h-full w-16 bg-gradient-to-l from-white via-white/80 to-transparent pointer-events-none transition-opacity duration-300 sm:hidden ${showRightShadow ? 'opacity-100' : 'opacity-0'}`}></div>
+          <div className={`absolute top-1/2 right-1 -translate-y-1/2 bg-gray-50 border border-gray-200 rounded-full p-0.5 shadow-sm pointer-events-none transition-opacity duration-300 sm:hidden animate-pulse ${showRightShadow ? 'opacity-100' : 'opacity-0'}`}>
+            <ChevronRight className="w-3 h-3 text-gray-500" />
           </div>
         </div>
       </div>

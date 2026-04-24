@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import DashboardNavbar from '../components/DashboardNavbar';
-import { Send, Search, User, Smile, Check, CheckCheck, MessageSquarePlus, Loader2 } from 'lucide-react';
+import { Send, Search, User, Smile, Check, CheckCheck, MessageSquarePlus, Loader2, ChevronLeft } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 export default function Messaging() {
   const [conversations, setConversations] = useState([]);
@@ -13,6 +14,7 @@ export default function Messaging() {
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const prevMessagesLengthRef = useRef(0);
+  const { showToast } = useToast();
   const pollRef = useRef(null);
   const [contactOnline, setContactOnline] = useState(false);
 
@@ -77,9 +79,9 @@ export default function Messaging() {
   }, [currentUserId]);
 
   // Fetch messages for active conversation
-  const fetchMessages = async (convId) => {
+  const fetchMessages = async (convId, isPolling = false) => {
     if (!convId) return;
-    setIsLoadingMsgs(true);
+    if (!isPolling) setIsLoadingMsgs(true);
     try {
       const res = await fetch(`/api/messages/${convId}`);
       if (res.ok) {
@@ -93,17 +95,22 @@ export default function Messaging() {
         body: JSON.stringify({ conversationId: convId, userId: currentUserId })
       });
       // Refresh conversations to update unread counts
-      fetchConversations();
+      if (!isPolling) fetchConversations();
     } catch (err) {
       console.error('Failed to fetch messages', err);
     } finally {
-      setIsLoadingMsgs(false);
+      if (!isPolling) setIsLoadingMsgs(false);
     }
   };
 
+  const conversationsRef = useRef(conversations);
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
+
   const checkOnlineStatus = async (convId) => {
     try {
-      const conv = conversations.find(c => c._id === convId);
+      const conv = conversationsRef.current.find(c => c._id === convId);
       const otherUser = getOtherParticipant(conv);
       if (otherUser?._id) {
         const res = await fetch(`/api/online/${otherUser._id}`);
@@ -122,16 +129,26 @@ export default function Messaging() {
       // Poll messages and online status every 3 seconds
       if (pollRef.current) clearInterval(pollRef.current);
       pollRef.current = setInterval(() => {
-        fetchMessages(activeConvId);
+        fetchMessages(activeConvId, true);
         checkOnlineStatus(activeConvId);
       }, 3000);
     }
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [activeConvId, conversations]);
+  }, [activeConvId]);
 
   // Start chat with a member (used from MemberCard)
   const startChatWithMember = async (memberId) => {
     try {
+      // First check if connection is accepted
+      const statusRes = await fetch(`/api/connections/status/${currentUserId}/${memberId}`);
+      if (statusRes.ok) {
+        const data = await statusRes.json();
+        if (data.status !== 'accepted') {
+          showToast('You can only chat with members who have accepted your interest request. 💖', 'error');
+          return;
+        }
+      }
+
       // Get the user by memberId
       const userRes = await fetch(`/api/user-by-member/${memberId}`);
       if (!userRes.ok) return;
@@ -237,7 +254,7 @@ export default function Messaging() {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-1" style={{ minHeight: '520px', maxHeight: 'calc(100vh - 200px)' }}>
 
           {/* Sidebar */}
-          <div className="w-[340px] border-r border-gray-100 flex flex-col bg-white shrink-0">
+          <div className={`border-r border-gray-100 flex flex-col bg-white shrink-0 ${activeConvId ? 'hidden lg:flex w-[340px]' : 'flex w-full lg:w-[340px]'}`}>
             <div className="p-5 border-b border-gray-100">
               <h2 className="text-lg font-bold text-gray-900 mb-3">Messages</h2>
               <div className="relative">
@@ -311,7 +328,7 @@ export default function Messaging() {
           </div>
 
           {/* Chat Area */}
-          <div className="flex-1 flex flex-col bg-[#faf9f7]">
+          <div className={`flex-1 flex-col bg-[#faf9f7] ${!activeConvId ? 'hidden lg:flex' : 'flex'}`}>
             {!activeConvId ? (
               /* Empty State */
               <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
@@ -326,8 +343,14 @@ export default function Messaging() {
             ) : (
               <>
                 {/* Chat Header */}
-                <div className="h-[68px] px-6 bg-white border-b border-gray-100 flex justify-between items-center shrink-0">
-                  <div className="flex items-center gap-3">
+                <div className="h-[68px] px-4 sm:px-6 bg-white border-b border-gray-100 flex justify-between items-center shrink-0">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <button 
+                      onClick={() => setActiveConvId(null)} 
+                      className="lg:hidden p-1 text-gray-500 hover:bg-gray-100 rounded-full mr-1"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
                     {activeContact?.image ? (
                       <img src={activeContact.image} alt="" className="w-10 h-10 rounded-full object-cover" />
                     ) : (

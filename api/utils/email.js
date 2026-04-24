@@ -98,3 +98,24 @@ export const sendAdminNotificationEmail = async (user) => {
   `;
   await sendEmail(process.env.SMTP_USER, subject, html); // Sends to the support email itself
 };
+
+export const sendOtpEmail = async (email, otp, firstName) => {
+  const subject = 'Password Reset OTP - Coastal Shaadi';
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
+      <h2 style="color: #d946ef; text-align: center;">Password Reset Request</h2>
+      <p>Hi ${firstName},</p>
+      <p>We received a request to reset the password for your Coastal Shaadi account.</p>
+      <p>Your 6-digit One Time Password (OTP) is:</p>
+      <div style="text-align: center; margin: 30px 0;">
+        <span style="background-color: #f3f4f6; color: #111827; padding: 12px 24px; border-radius: 6px; font-weight: bold; font-size: 24px; letter-spacing: 5px;">${otp}</span>
+      </div>
+      <p>This OTP is valid for 15 minutes. Please do not share it with anyone.</p>
+      <p>If you did not request a password reset, you can safely ignore this email.</p>
+      <br/>
+      <p>Best Regards,</p>
+      <p><strong>The Coastal Shaadi Team</strong></p>
+    </div>
+  `;
+  await sendEmail(email, subject, html);
+};

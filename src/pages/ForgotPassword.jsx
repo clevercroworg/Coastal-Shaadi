@@ -29,7 +29,7 @@ export default function ForgotPassword() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to send OTP');
 
-      setSuccess('A 6-digit OTP has been generated. Check the backend terminal console.');
+      setSuccess('A 6-digit verification code has been sent to your email.');
       setStep(2);
     } catch (err) {
       setError(err.message);

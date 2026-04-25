@@ -96,9 +96,10 @@ export const MemberProvider = ({ children }) => {
     });
   };
 
-  // Helper to get unique values for filter dropdowns
+  // Helper to get unique values for filter dropdowns based on filtered members
   const getUniqueValues = (field) => {
-    return [...new Set(members.map(m => m[field]).filter(v => v && v !== '-'))];
+    const filtered = getFilteredMembers();
+    return [...new Set(filtered.map(m => m[field]).filter(v => v && v !== '-'))];
   };
 
   // Dynamically filter members based on logged-in user

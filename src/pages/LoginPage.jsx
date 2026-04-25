@@ -130,11 +130,13 @@ export default function LoginPage() {
         localStorage.setItem('token', data.token);
         localStorage.setItem('userFilter', JSON.stringify({ religion: data.user.religion, caste: data.user.caste }));
         localStorage.setItem('userProfile', JSON.stringify(data.user));
+        // Notify MemberContext to re-filter members immediately
+        window.dispatchEvent(new Event('userLogin'));
 
         if (data.user.status === 'pending' || data.user.status === 'rejected') {
-          window.location.href = '/pending';
+          navigate('/pending');
         } else {
-          window.location.href = '/active-members';
+          navigate('/active-members');
         }
       }
     } catch (err) {

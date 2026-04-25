@@ -10,6 +10,24 @@ export const MemberProvider = ({ children }) => {
   const [interestedIds, setInterestedIds] = useState([]);
   const [ignoredIds, setIgnoredIds] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [userProfile, setUserProfile] = useState(() => {
+    try {
+      const stored = localStorage.getItem('userProfile');
+      return stored ? JSON.parse(stored) : null;
+    } catch(e) { return null; }
+  });
+
+  // Listen for login/logout events to immediately re-filter
+  useEffect(() => {
+    const handleLogin = () => {
+      try {
+        const stored = localStorage.getItem('userProfile');
+        setUserProfile(stored ? JSON.parse(stored) : null);
+      } catch(e) { setUserProfile(null); }
+    };
+    window.addEventListener('userLogin', handleLogin);
+    return () => window.removeEventListener('userLogin', handleLogin);
+  }, []);
 
   useEffect(() => {
     const fetchMembers = async () => {
@@ -104,24 +122,20 @@ export const MemberProvider = ({ children }) => {
 
   // Dynamically filter members based on logged-in user
   const getFilteredMembers = () => {
-    try {
-      const stored = localStorage.getItem('userProfile');
-      if (stored) {
-        const loggedInUser = JSON.parse(stored);
-        return members.filter(m => {
-          // Hide self
-          if (m.id === loggedInUser.memberId || m.id === loggedInUser.id) return false;
-          
-          // Strict Religion Filter (Only show same religion)
-          if (loggedInUser.religion && m.religion !== loggedInUser.religion) return false;
+    if (userProfile) {
+      return members.filter(m => {
+        // Hide self
+        if (m.id === userProfile.memberId || m.id === userProfile.id) return false;
+        
+        // Strict Religion Filter (Only show same religion)
+        if (userProfile.religion && m.religion !== userProfile.religion) return false;
 
-          // Strict Gender Filter (Only show opposite gender)
-          if (loggedInUser.gender && m.gender === loggedInUser.gender) return false;
+        // Strict Gender Filter (Only show opposite gender)
+        if (userProfile.gender && m.gender === userProfile.gender) return false;
 
-          return true;
-        });
-      }
-    } catch(e) {}
+        return true;
+      });
+    }
     return members;
   };
 

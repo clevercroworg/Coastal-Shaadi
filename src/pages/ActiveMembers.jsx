@@ -125,7 +125,18 @@ export default function ActiveMembers() {
   const languages = getUniqueValues('language');
   const countries = getUniqueValues('country');
   const states = getUniqueValues('state');
-  const cities = getUniqueValues('city');
+  // Always show a comprehensive list of cities in the dropdown
+  const masterCities = [
+    'Mangalore', 'Mangaluru', 'Udupi', 'Manipal', 'Kundapura', 'Karwar',
+    'Kasaragod', 'Bantwal', 'Puttur', 'Sullia', 'Belthangady', 'Moodabidri',
+    'Karkala', 'Brahmavar', 'Byndoor', 'Honnavar', 'Bhatkal', 'Kumta',
+    'Ankola', 'Sirsi', 'Dharmasthala', 'Vitla', 'Uppinangady',
+    'Bangalore', 'Bengaluru', 'Mumbai', 'Pune', 'Hyderabad', 'Chennai',
+    'Delhi', 'Goa', 'Mysore', 'Hubli', 'Belgaum', 'Shimoga',
+    'Kannur', 'Kozhikode', 'Kochi', 'Thiruvananthapuram'
+  ];
+  const dynamicCities = getUniqueValues('city');
+  const cities = [...new Set([...masterCities, ...dynamicCities])].sort();
   const maritalStatuses = getUniqueValues('maritalStatus');
 
   const SelectFilter = ({ label, name, options, value }) => (

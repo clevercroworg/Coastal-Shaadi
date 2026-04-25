@@ -98,9 +98,30 @@ export default function ActiveMembers() {
     return pages;
   };
 
+  // Define the full list of castes to always show them in the dropdown
+  const castesList = {
+    Hindu: [
+      'Bunt', 'Billava', 'Mogaveera', 'Brahmin (GSB)', 'Vishwakarma (Achari)',
+      'Devadiga', 'Kulala (Kumbara)', 'Ganiga', 'Naika / Nayak', 'SC / ST'
+    ],
+    Christian: [
+      'Roman Catholic', 'Syrian Catholic', 'CSI (Church of South India)',
+      'Protestant', 'Pentecostal', 'Born Again Christian'
+    ]
+  };
+
+  const loggedInReligion = filters.religion || (function() {
+    try {
+      const stored = localStorage.getItem('userProfile');
+      if (stored) return JSON.parse(stored).religion;
+    } catch(e) {}
+    return '';
+  })();
+
   // Get cascaded unique values based on current filters for dynamic dropdowns
   const religions = getUniqueValues('religion');
-  const castes = getUniqueValues('caste');
+  // Always show the full list of castes for the selected/logged-in religion, otherwise fallback to dynamic
+  const castes = castesList[loggedInReligion] || getUniqueValues('caste');
   const languages = getUniqueValues('language');
   const countries = getUniqueValues('country');
   const states = getUniqueValues('state');

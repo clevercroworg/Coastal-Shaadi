@@ -132,9 +132,9 @@ export default function LoginPage() {
         localStorage.setItem('userProfile', JSON.stringify(data.user));
 
         if (data.user.status === 'pending' || data.user.status === 'rejected') {
-          navigate('/pending');
+          window.location.href = '/pending';
         } else {
-          navigate('/active-members');
+          window.location.href = '/active-members';
         }
       }
     } catch (err) {

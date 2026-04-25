@@ -105,7 +105,7 @@ app.post('/api/register', async (req, res) => {
     const payload = { user: { id: user.id } };
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 
-    res.status(201).json({ token, user: { id: user.id, firstName, lastName, email, religion, caste, memberId, role: user.role, status: user.status, memberType: user.memberType, planExpiry: user.planExpiry, whatsappNumber: user.whatsappNumber, whatsappConsent: user.whatsappConsent } });
+    res.status(201).json({ token, user: { id: user.id, firstName, lastName, email, gender, religion, caste, memberId, role: user.role, status: user.status, memberType: user.memberType, planExpiry: user.planExpiry, whatsappNumber: user.whatsappNumber, whatsappConsent: user.whatsappConsent } });
   } catch (err) {
     console.error('REGISTER ERROR:', err);
     res.status(500).json({ message: 'Server error: ' + err.message, error: err.message, stack: err.stack });
@@ -129,7 +129,7 @@ app.post('/api/login', async (req, res) => {
     const payload = { user: { id: user.id } };
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 
-    res.json({ token, user: { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email, religion: user.religion, caste: user.caste, memberId: user.memberId, profileData: user.profileData, image: user.image, role: user.role, status: user.status, memberType: user.memberType, planExpiry: user.planExpiry, whatsappNumber: user.whatsappNumber, whatsappConsent: user.whatsappConsent } });
+    res.json({ token, user: { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email, gender: user.gender, religion: user.religion, caste: user.caste, memberId: user.memberId, profileData: user.profileData, image: user.image, role: user.role, status: user.status, memberType: user.memberType, planExpiry: user.planExpiry, whatsappNumber: user.whatsappNumber, whatsappConsent: user.whatsappConsent } });
   } catch (err) {
     console.error('LOGIN ERROR:', err);
     res.status(500).json({ message: 'Server error: ' + err.message, error: err.message, stack: err.stack });

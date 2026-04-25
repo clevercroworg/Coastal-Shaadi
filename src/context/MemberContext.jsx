@@ -43,6 +43,7 @@ export const MemberProvider = ({ children }) => {
               type: user.memberType || 'Premium',
               age: calculateAge(user.dob) !== '-' ? calculateAge(user.dob) : (user.profileData?.age || '-'),
               height: user.profileData?.height || '-',
+              gender: user.gender || '-',
               religion: user.religion || '-',
               caste: user.caste || '-',
               subCaste: user.profileData?.subCaste || '-',
@@ -100,13 +101,24 @@ export const MemberProvider = ({ children }) => {
     return [...new Set(members.map(m => m[field]).filter(v => v && v !== '-'))];
   };
 
-  // Dynamically filter out logged in user on every access
+  // Dynamically filter members based on logged-in user
   const getFilteredMembers = () => {
     try {
       const stored = localStorage.getItem('userProfile');
       if (stored) {
         const loggedInUser = JSON.parse(stored);
-        return members.filter(m => m.id !== loggedInUser.memberId && m.id !== loggedInUser.id);
+        return members.filter(m => {
+          // Hide self
+          if (m.id === loggedInUser.memberId || m.id === loggedInUser.id) return false;
+          
+          // Strict Religion Filter (Only show same religion)
+          if (loggedInUser.religion && m.religion !== loggedInUser.religion) return false;
+
+          // Strict Gender Filter (Only show opposite gender)
+          if (loggedInUser.gender && m.gender === loggedInUser.gender) return false;
+
+          return true;
+        });
       }
     } catch(e) {}
     return members;

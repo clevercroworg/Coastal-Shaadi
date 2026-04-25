@@ -92,9 +92,15 @@ app.post('/api/register', async (req, res) => {
 
     await user.save();
     
-    // Send Pending Verification Email asynchronously
-    sendPendingEmail(user.email, user.firstName).catch(console.error);
-    sendAdminNotificationEmail(user).catch(console.error);
+    // Await emails so Vercel doesn't kill the function before they send
+    try {
+      await Promise.all([
+        sendPendingEmail(user.email, user.firstName),
+        sendAdminNotificationEmail(user)
+      ]);
+    } catch (emailErr) {
+      console.error('Email sending failed during registration:', emailErr);
+    }
 
     const payload = { user: { id: user.id } };
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
@@ -255,10 +261,14 @@ app.put('/api/admin/users/:id/status', async (req, res) => {
     if (!user) return res.status(404).json({ message: 'User not found' });
     
     // Send email notification based on status
-    if (status === 'approved') {
-      sendApprovalEmail(user.email, user.firstName).catch(console.error);
-    } else if (status === 'rejected') {
-      sendRejectionEmail(user.email, user.firstName).catch(console.error);
+    try {
+      if (status === 'approved') {
+        await sendApprovalEmail(user.email, user.firstName);
+      } else if (status === 'rejected') {
+        await sendRejectionEmail(user.email, user.firstName);
+      }
+    } catch (emailErr) {
+      console.error('Email sending failed during admin update:', emailErr);
     }
 
     res.json(user);

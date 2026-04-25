@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import DashboardNavbar from '../components/DashboardNavbar';
 import { User, Mail, Phone, MapPin, Briefcase, GraduationCap, Map, Camera, Pencil, X, Check, Heart, Calendar, Ruler, Utensils, Shield, Globe, BookOpen, Loader2 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
+import { useMembers } from '../context/MemberContext';
 
 const maxDate = new Date();
 maxDate.setFullYear(maxDate.getFullYear() - 18);
@@ -15,13 +16,27 @@ const Field = ({ label, field, icon, profile, isEditing, editData, handleChange,
         {label}
       </p>
       {isEditing ? (
-        <input
-          type={type}
-          value={editData[field] || ''}
-          onChange={(e) => handleChange(field, e.target.value)}
-          {...rest}
-          className="text-sm font-medium text-gray-900 border border-gray-300 rounded px-2 py-1 w-full focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-        />
+        type === "select" ? (
+          <select
+            value={editData[field] || ''}
+            onChange={(e) => handleChange(field, e.target.value)}
+            {...rest}
+            className="text-sm font-medium text-gray-900 border border-gray-300 rounded px-2 py-1 w-full focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white"
+          >
+            <option value="">Select {label}</option>
+            {rest.options?.map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+        ) : (
+          <input
+            type={type}
+            value={editData[field] || ''}
+            onChange={(e) => handleChange(field, e.target.value)}
+            {...rest}
+            className="text-sm font-medium text-gray-900 border border-gray-300 rounded px-2 py-1 w-full focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+          />
+        )
       ) : (
         <p className="text-sm font-medium text-gray-900">{profile[field] || '-'}</p>
       )}
@@ -65,6 +80,11 @@ export default function MyProfile() {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
   const { showToast } = useToast();
+  const { masterCities, getUniqueValues, indianStates } = useMembers();
+  
+  // Combine master cities with any unique cities already in the database
+  const allCities = [...new Set([...masterCities, ...getUniqueValues('city')])].sort();
+
   const [whatsappNumber, setWhatsappNumber] = useState(userData?.whatsappNumber || '');
   const [whatsappConsent, setWhatsappConsent] = useState(userData?.whatsappConsent || false);
   const [isSavingWhatsapp, setIsSavingWhatsapp] = useState(false);
@@ -226,7 +246,12 @@ export default function MyProfile() {
   };
 
   const handleChange = (field, value) => {
-    setEditData(prev => ({ ...prev, [field]: value }));
+    // Auto-capitalize city and state if they are text inputs
+    let processedValue = value;
+    if ((field === 'city' || field === 'state' || field === 'workLocation' || field === 'partnerLocation') && typeof value === 'string') {
+      processedValue = value.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+    }
+    setEditData(prev => ({ ...prev, [field]: processedValue }));
   };
 
   const handleImageUpload = async (e) => {
@@ -474,7 +499,26 @@ export default function MyProfile() {
                     </div>
                     <div>
                       <label className="text-[11px] text-gray-400 uppercase tracking-wider block mb-1">City</label>
-                      <input value={editData.city} onChange={(e) => handleChange('city', e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                      <input 
+                        value={editData.city} 
+                        onChange={(e) => handleChange('city', e.target.value)} 
+                        list="city-suggestions"
+                        className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30" 
+                        placeholder="Type to search city..."
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] text-gray-400 uppercase tracking-wider block mb-1">State</label>
+                      <select 
+                        value={editData.state} 
+                        onChange={(e) => handleChange('state', e.target.value)} 
+                        className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
+                      >
+                        <option value="">Select State</option>
+                        {indianStates.map(state => (
+                          <option key={state} value={state}>{state}</option>
+                        ))}
+                      </select>
                     </div>
                   </>
                 ) : (
@@ -527,6 +571,7 @@ export default function MyProfile() {
                 <Field label="Height" field="height" icon={<Ruler className="w-3 h-3" />} profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} />
                 <Field label="Marital Status" field="maritalStatus" icon={<Heart className="w-3 h-3" />} profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} />
                 <Field label="Profile Created By" field="createdBy" icon={<User className="w-3 h-3" />} profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} />
+                <Field label="State" field="state" type="select" options={indianStates} icon={<Map className="w-3 h-3" />} profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} />
                 <Field label="Diet" field="diet" icon={<Utensils className="w-3 h-3" />} profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} />
                 <Field label="Any Disability" field="disability" profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} />
               </div>
@@ -553,7 +598,7 @@ export default function MyProfile() {
                 <Field label="Company" field="company" profile={profile} isEditing={editSection === 'career'} editData={editData} handleChange={handleChange} />
                 <Field label="Employed In" field="employedIn" profile={profile} isEditing={editSection === 'career'} editData={editData} handleChange={handleChange} />
                 <Field label="Annual Income" field="income" profile={profile} isEditing={editSection === 'career'} editData={editData} handleChange={handleChange} />
-                <Field label="Work Location" field="workLocation" icon={<MapPin className="w-3 h-3" />} profile={profile} isEditing={editSection === 'career'} editData={editData} handleChange={handleChange} />
+                <Field label="Work Location" field="workLocation" icon={<MapPin className="w-3 h-3" />} profile={profile} isEditing={editSection === 'career'} editData={editData} handleChange={handleChange} list="city-suggestions" placeholder="Type city..." />
               </div>
             </div>
 
@@ -565,7 +610,7 @@ export default function MyProfile() {
                 <Field label="Preferred Height" field="partnerHeight" profile={profile} isEditing={editSection === 'partner'} editData={editData} handleChange={handleChange} />
                 <Field label="Education" field="partnerEducation" icon={<GraduationCap className="w-3 h-3" />} profile={profile} isEditing={editSection === 'partner'} editData={editData} handleChange={handleChange} />
                 <Field label="Profession" field="partnerProfession" icon={<Briefcase className="w-3 h-3" />} profile={profile} isEditing={editSection === 'partner'} editData={editData} handleChange={handleChange} />
-                <Field label="Location" field="partnerLocation" icon={<MapPin className="w-3 h-3" />} profile={profile} isEditing={editSection === 'partner'} editData={editData} handleChange={handleChange} />
+                <Field label="Location" field="partnerLocation" icon={<MapPin className="w-3 h-3" />} profile={profile} isEditing={editSection === 'partner'} editData={editData} handleChange={handleChange} list="city-suggestions" placeholder="Type city..." />
               </div>
             </div>
 
@@ -639,6 +684,18 @@ export default function MyProfile() {
           </div>
         </div>
       </div>
+
+      <datalist id="city-suggestions">
+        {allCities.map(city => (
+          <option key={city} value={city} />
+        ))}
+      </datalist>
+
+      <datalist id="state-suggestions">
+        {indianStates.map(state => (
+          <option key={state} value={state} />
+        ))}
+      </datalist>
     </main>
   );
 }

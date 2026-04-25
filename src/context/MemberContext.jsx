@@ -1,5 +1,71 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
+export const masterCities = [
+  // --- Coastal Karnataka (Core Focus) ---
+  'Mangalore', 'Mangaluru', 'Udupi', 'Manipal', 'Kundapura', 'Karwar', 'Kasaragod',
+  'Bantwal', 'Puttur', 'Sullia', 'Belthangady', 'Moodabidri', 'Karkala', 'Brahmavar',
+  'Byndoor', 'Honnavar', 'Bhatkal', 'Kumta', 'Ankola', 'Sirsi', 'Dharmasthala',
+  'Vitla', 'Uppinangady', 'Ullal', 'Mulki', 'Padubidri', 'Kaup', 'Malpe', 'Saligrama',
+  'Kota', 'Mabukala', 'Siddapura', 'Gokarna', 'Murudeshwar', 'Mundkur', 'Kinnigoli',
+  'Kateel', 'Bajpe', 'Surathkal', 'Kadaba', 'Subramanya', 'Sagara', 'Thirthahalli',
+
+  // --- Karnataka (Major & Taluks) ---
+  'Bangalore', 'Bengaluru', 'Mysore', 'Mysuru', 'Hubli', 'Hubballi', 'Dharwad', 
+  'Belgaum', 'Belagavi', 'Gulbarga', 'Kalaburagi', 'Davanagere', 'Bellary', 'Ballari',
+  'Shimoga', 'Shivamogga', 'Tumkur', 'Tumakuru', 'Raichur', 'Bidar', 'Hassan',
+  'Chitradurga', 'Kolar', 'Mandya', 'Chikmagalur', 'Bagalkot', 'Ranebennuru',
+  'Arsikere', 'Gangawati', 'Hospet', 'Gadag', 'Betageri', 'Robertsonpet', 'Bhadravati',
+  'Koppal', 'Chamarajanagar', 'Haveri', 'Yadgir', 'Yellapur', 'Mundgod', 'Haliyal',
+  'Dandeli', 'Joida', 'Banavasi', 'Arasikere', 'Tiptur', 'Channarayapatna', 'Belur',
+  'Sakleshpur', 'Madikeri', 'Virajpet', 'Somwarpet', 'Kushal Nagar', 'Kodagu',
+  'Hunsur', 'Nanjangud', 'Channapatna', 'Ramanagara', 'Kanakapura', 'Magadi',
+  'Doddaballapur', 'Devanahalli', 'Hosakote', 'Anekal', 'Gundlupet', 'Kollegala',
+
+  // --- Maharashtra ---
+  'Mumbai', 'Pune', 'Nagpur', 'Thane', 'Nashik', 'Aurangabad', 'Solapur', 'Amravati',
+  'Navi Mumbai', 'Kolhapur', 'Sangli', 'Ratnagiri', 'Sindhudurg', 'Chiplun',
+
+  // --- Kerala ---
+  'Kochi', 'Cochin', 'Thiruvananthapuram', 'Trivandrum', 'Kozhikode', 'Calicut',
+  'Kannur', 'Thrissur', 'Kollam', 'Palakkad', 'Alappuzha', 'Malappuram', 'Manjeshwar',
+  'Kumbla', 'Hosdurg', 'Kanhangad', 'Nileshwar',
+
+  // --- Goa ---
+  'Panaji', 'Margao', 'Vasco da Gama', 'Mapusa', 'Ponda', 'Madgaon',
+
+  // --- Tamil Nadu ---
+  'Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem', 'Tirunelveli',
+  'Erode', 'Vellore', 'Thoothukudi', 'Hosur',
+
+  // --- Telangana & Andhra Pradesh ---
+  'Hyderabad', 'Visakhapatnam', 'Vijayawada', 'Guntur', 'Nellore', 'Warangal',
+  'Kurnool', 'Rajahmundry', 'Tirupati',
+
+  // --- Other Major Indian Cities ---
+  'Delhi', 'New Delhi', 'Gurgaon', 'Noida', 'Ahmedabad', 'Surat', 'Vadodara',
+  'Rajkot', 'Bhavnagar', 'Jamnagar', 'Junagadh', 'Gandhinagar', 'Jaipur', 'Jodhpur',
+  'Udaipur', 'Kota', 'Ajmer', 'Bikaner', 'Lucknow', 'Kanpur', 'Varanasi', 'Agra',
+  'Meerut', 'Ghaziabad', 'Prayagraj', 'Allahabad', 'Bareilly', 'Aligarh', 'Moradabad',
+  'Patna', 'Gaya', 'Bhagalpur', 'Bhopal', 'Indore', 'Jabalpur', 'Gwalior', 'Ujjain',
+  'Kolkata', 'Howrah', 'Asansol', 'Siliguri', 'Durgapur', 'Bardhaman', 'Malda',
+  'Guwahati', 'Silchar', 'Dibrugarh', 'Jorhat', 'Bhubaneswar', 'Cuttack', 'Rourkela',
+  'Berhampur', 'Sambalpur', 'Puri', 'Ranchi', 'Jamshedpur', 'Dhanbad', 'Bokaro',
+  'Raipur', 'Bhilai', 'Bilaspur', 'Chandigarh', 'Ludhiana', 'Amritsar', 'Jalandhar',
+  'Patiala', 'Bathinda', 'Faridabad', 'Gurugram', 'Rohtak', 'Panipat', 'Karnal',
+  'Ambala', 'Shimla', 'Dehradun', 'Haridwar', 'Srinagar', 'Jammu', 'Leh',
+  'Shillong', 'Agartala', 'Imphal', 'Aizawl', 'Kohima', 'Gangtok', 'Itanagar'
+];
+
+export const indianStates = [
+  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+  'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+  'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
+  'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+  'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+  'Andaman and Nicobar Islands', 'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu',
+  'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry'
+];
+
 const MemberContext = createContext();
 
 export const useMembers = () => useContext(MemberContext);
@@ -149,6 +215,8 @@ export const MemberProvider = ({ children }) => {
       toggleInterest,
       toggleIgnore,
       getUniqueValues,
+      masterCities,
+      indianStates,
       isLoading
     }}>
       {children}

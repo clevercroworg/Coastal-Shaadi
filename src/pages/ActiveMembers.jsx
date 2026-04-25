@@ -7,7 +7,7 @@ import UpgradeModal from '../components/UpgradeModal';
 import FullProfileModal from '../components/FullProfileModal';
 
 export default function ActiveMembers() {
-  const { members, getUniqueValues } = useMembers();
+  const { members, getUniqueValues, masterCities } = useMembers();
 
   const getInitialFilters = () => {
     let religion = '';
@@ -71,9 +71,9 @@ export default function ActiveMembers() {
     if (filters.subCaste && member.subCaste !== filters.subCaste) return false;
     if (filters.language && member.language !== filters.language) return false;
     if (filters.profession && !member.profession.toLowerCase().includes(filters.profession.toLowerCase())) return false;
-    if (filters.country && member.country !== filters.country) return false;
-    if (filters.state && member.state !== filters.state) return false;
-    if (filters.city && member.city !== filters.city) return false;
+    if (filters.country && member.country?.toLowerCase() !== filters.country?.toLowerCase()) return false;
+    if (filters.state && member.state?.toLowerCase() !== filters.state?.toLowerCase()) return false;
+    if (filters.city && member.city?.toLowerCase() !== filters.city?.toLowerCase()) return false;
     if (filters.minHeight && parseHeight(member.height) < parseFloat(filters.minHeight)) return false;
     if (filters.maxHeight && parseHeight(member.height) > parseFloat(filters.maxHeight)) return false;
     if (filters.memberType !== 'all') {
@@ -126,15 +126,6 @@ export default function ActiveMembers() {
   const countries = getUniqueValues('country');
   const states = getUniqueValues('state');
   // Always show a comprehensive list of cities in the dropdown
-  const masterCities = [
-    'Mangalore', 'Mangaluru', 'Udupi', 'Manipal', 'Kundapura', 'Karwar',
-    'Kasaragod', 'Bantwal', 'Puttur', 'Sullia', 'Belthangady', 'Moodabidri',
-    'Karkala', 'Brahmavar', 'Byndoor', 'Honnavar', 'Bhatkal', 'Kumta',
-    'Ankola', 'Sirsi', 'Dharmasthala', 'Vitla', 'Uppinangady',
-    'Bangalore', 'Bengaluru', 'Mumbai', 'Pune', 'Hyderabad', 'Chennai',
-    'Delhi', 'Goa', 'Mysore', 'Hubli', 'Belgaum', 'Shimoga',
-    'Kannur', 'Kozhikode', 'Kochi', 'Thiruvananthapuram'
-  ];
   const dynamicCities = getUniqueValues('city');
   const cities = [...new Set([...masterCities, ...dynamicCities])].sort();
   const maritalStatuses = getUniqueValues('maritalStatus');

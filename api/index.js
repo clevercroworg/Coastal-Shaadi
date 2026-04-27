@@ -102,7 +102,8 @@ app.post('/api/register', async (req, res) => {
 
     user = new User({
       firstName, lastName, email, phone, password: hashedPassword,
-      gender, dob, onBehalf, religion, caste, memberId
+      gender, dob, onBehalf, religion, caste, memberId,
+      memberType: 'Free'
     });
 
     await user.save();
@@ -356,17 +357,18 @@ app.put('/api/admin/users/:id/plan', async (req, res) => {
   }
 });
 
-// Auto-migrate: Set all existing users without memberType to 'Free' & clean profileData
+// Auto-migrate: Reset all users to 'Free' (one-time fix for seed data that was incorrectly set to Elite)
+// Once Razorpay is live, remove this block — only the checkout flow should upgrade users
 (async () => {
   try {
     await mongoose.connection.asPromise();
-    // Set memberType for users who don't have it, or have it as null/empty
+    // Reset ALL non-admin users to Free (fixes seed data issue)
     const result = await User.updateMany(
-      { $or: [{ memberType: { $exists: false } }, { memberType: null }, { memberType: '' }] },
-      { $set: { memberType: 'Free' } }
+      { role: 'user' },
+      { $set: { memberType: 'Free' }, $unset: { planExpiry: '' } }
     );
     if (result.modifiedCount > 0) {
-      console.log(`Migrated ${result.modifiedCount} users to Free plan`);
+      console.log(`Reset ${result.modifiedCount} users to Free plan (seed data fix)`);
     }
     // Clean stale memberType from inside profileData for all users
     await User.updateMany(

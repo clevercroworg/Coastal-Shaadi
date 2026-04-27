@@ -11,7 +11,7 @@ import User from './models/User.js';
 import Conversation from './models/Conversation.js';
 import Message from './models/Message.js';
 import Connection from './models/Connection.js';
-import { sendPendingEmail, sendApprovalEmail, sendRejectionEmail, sendAdminNotificationEmail, sendOtpEmail } from './utils/email.js';
+import { sendPendingEmail, sendApprovalEmail, sendRejectionEmail, sendAdminNotificationEmail, sendOtpEmail, sendContactEmail } from './utils/email.js';
 
 const app = express();
 app.use(cors());
@@ -68,6 +68,21 @@ app.get('/api/health', (req, res) => {
       CLOUDINARY_CLOUD_NAME: !!CLOUDINARY_CLOUD_NAME
     }
   });
+});
+
+app.post('/api/contact', async (req, res) => {
+  try {
+    const { firstName, lastName, email, message } = req.body;
+    if (!firstName || !email || !message) {
+      return res.status(400).json({ message: 'First name, email, and message are required.' });
+    }
+    
+    await sendContactEmail(firstName, lastName || '', email, message);
+    res.status(200).json({ message: 'Contact email sent successfully!' });
+  } catch (err) {
+    console.error('CONTACT EMAIL ERROR:', err);
+    res.status(500).json({ message: 'Server error: ' + err.message });
+  }
 });
 
 app.post('/api/register', async (req, res) => {

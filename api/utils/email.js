@@ -119,3 +119,18 @@ export const sendOtpEmail = async (email, otp, firstName) => {
   `;
   await sendEmail(email, subject, html);
 };
+
+export const sendContactEmail = async (firstName, lastName, userEmail, userMessage) => {
+  const subject = `New Contact Inquiry from ${firstName} ${lastName}`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
+      <h2 style="color: #d946ef; text-align: center;">New Contact Inquiry</h2>
+      <p><strong>Name:</strong> ${firstName} ${lastName}</p>
+      <p><strong>Email:</strong> ${userEmail}</p>
+      <hr style="border: 0; border-top: 1px solid #eaeaea; margin: 20px 0;" />
+      <p><strong>Message:</strong></p>
+      <p style="white-space: pre-wrap; background-color: #f9fafb; padding: 15px; border-radius: 6px;">${userMessage}</p>
+    </div>
+  `;
+  await sendEmail(process.env.SMTP_USER, subject, html); // Sends to support email
+};

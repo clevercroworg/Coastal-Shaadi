@@ -1,9 +1,42 @@
-import React from 'react';
+import React, { useState } from 'react';
 import PageHeader from '../components/PageHeader';
 import { motion } from 'framer-motion';
-import { Mail, Phone, MapPin, Send } from 'lucide-react';
+import { Mail, Send } from 'lucide-react';
 
 export default function Contact() {
+  const [formData, setFormData] = useState({ firstName: '', lastName: '', email: '', message: '' });
+  const [status, setStatus] = useState({ type: '', message: '' });
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.firstName || !formData.email || !formData.message) {
+      setStatus({ type: 'error', message: 'Please fill in all required fields.' });
+      return;
+    }
+
+    setLoading(true);
+    setStatus({ type: '', message: '' });
+
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setStatus({ type: 'success', message: 'Your message has been sent successfully! We will get back to you soon.' });
+        setFormData({ firstName: '', lastName: '', email: '', message: '' });
+      } else {
+        setStatus({ type: 'error', message: data.message || 'Failed to send message.' });
+      }
+    } catch (err) {
+      setStatus({ type: 'error', message: 'A network error occurred. Please try again later.' });
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
     <main className="pb-20">
       <PageHeader 
@@ -23,34 +56,36 @@ export default function Contact() {
             <div className="absolute top-0 left-0 w-1 h-full bg-accent" />
             <h2 className="text-2xl font-serif font-bold text-primary mb-6">Send us a message</h2>
             
-            <form className="space-y-6" onSubmit={(e) => {
-              e.preventDefault();
-              window.location.href = "mailto:support@coastalshaadi.com?subject=Contact%20Inquiry";
-            }}>
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              {status.message && (
+                <div className={`p-4 rounded-lg text-sm font-medium ${status.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
+                  {status.message}
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
-                  <input type="text" className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all" placeholder="John" />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">First Name *</label>
+                  <input type="text" value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all" placeholder="John" required />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
-                  <input type="text" className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all" placeholder="Doe" />
+                  <input type="text" value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all" placeholder="Doe" />
                 </div>
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-                <input type="email" className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all" placeholder="john@example.com" />
+                <label className="block text-sm font-medium text-gray-700 mb-2">Email Address *</label>
+                <input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all" placeholder="john@example.com" required />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Message</label>
-                <textarea rows="4" className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all resize-none" placeholder="How can we help you?"></textarea>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Message *</label>
+                <textarea rows="4" value={formData.message} onChange={(e) => setFormData({...formData, message: e.target.value})} className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all resize-none" placeholder="How can we help you?" required></textarea>
               </div>
               
-              <button type="submit" className="w-full bg-gradient-to-r from-primary to-primary-hover text-white py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 group">
-                Send Message
-                <Send className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-primary to-primary-hover text-white py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed">
+                {loading ? 'Sending...' : 'Send Message'}
+                {!loading && <Send className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
               </button>
             </form>
           </motion.div>

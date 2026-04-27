@@ -31,7 +31,7 @@ const sendEmail = async (to, subject, html) => {
 };
 
 export const sendPendingEmail = async (email, firstName) => {
-  const subject = 'Your Account is Pending Verification - Coastal Shaadi';
+  const subject = 'Thank you for registering with Coastal Shaadi!';
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
       <h2 style="color: #d946ef; text-align: center;">Welcome to Coastal Shaadi!</h2>

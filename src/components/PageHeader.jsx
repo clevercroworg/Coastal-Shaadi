@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 
 export default function PageHeader({ title, subtitle }) {
   return (
-    <div className="pt-32 pb-16 bg-gradient-to-b from-primary/10 to-canvas">
+    <div className="pt-32 pb-8 bg-gradient-to-b from-primary/10 to-canvas">
       <div className="max-w-7xl mx-auto px-6 lg:px-8 text-center">
         <motion.h1 
           initial={{ opacity: 0, y: -20 }}

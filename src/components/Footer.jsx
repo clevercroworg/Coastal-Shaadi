@@ -16,23 +16,23 @@ export default function Footer() {
 
             {/* Brand */}
             <div className="lg:col-span-1">
-              <div className="flex items-center gap-2 mb-5">
+              <div className="relative mb-6">
                 <img
                   src="/Coastal%20Shaadi%201.png"
                   alt="Coastal Shaadi"
                   className="h-10 lg:h-12 w-auto"
                 />
+                <span className="absolute -bottom-1 left-[32%] text-accent italic font-medium text-[11px] tracking-wide whitespace-nowrap">One Step to Forever.</span>
               </div>
               <p className="text-gray-400 text-sm leading-relaxed mb-6">
-                Honouring our community matrimonial traditions across the beautiful Udupi-Mangalore coastal belt. Your privacy, our promise. <br/><span className="text-accent italic font-medium mt-2 block">One Step to Forever.</span>
+                Honouring our community matrimonial traditions across the beautiful Udupi-Mangalore coastal belt. Your privacy, our promise.
               </p>
-
             </div>
 
             {/* Quick Links */}
             <div>
               <h4 className="text-accent text-xs font-bold uppercase tracking-[0.15em] mb-6">Quick Links</h4>
-              <ul className="space-y-3">
+              <ul className="grid grid-cols-2 gap-x-2 gap-y-3">
                 {[
                   { name: 'Home', path: '/' },
                   { name: 'Active Members', path: '/active-members' },

@@ -4,10 +4,12 @@ import { Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import { OrnamentDivider, MandalaPattern, FlowerCorner } from './Decorative';
 
 const reviews = [
-  { name: "Deepthi Shenoy", location: "Mangalore", rating: 5, text: "The privacy controls are outstanding. I never felt pressured. My photo was only visible after mutual interest was confirmed. That level of respect is rare." },
-  { name: "Fr. George D'Souza", location: "Udupi", rating: 5, text: "As a community leader, I recommend Coastal Shaadi for its integrity. The verification process is thorough and trustworthy." },
-  { name: "Raghavendra Pai", location: "Kundapura", rating: 5, text: "Found my daughter's perfect match within weeks. The curated matching meant we only saw families that shared our traditions. Excellent!" },
-  { name: "Swetha Fernandes", location: "Mangalore", rating: 5, text: "The Elite plan's WhatsApp connectivity was a game-changer. Transitioning from online to real conversations felt so natural." },
+  { name: "Deepthi Shenoy", location: "Mangalore", rating: 5, text: "Found my match in 3 months. Getting married in December! My parents are so relieved 😊" },
+  { name: "Fr. George D'Souza", location: "Udupi", rating: 5, text: "I've recommended this to several families in our parish. They verify profiles properly which is very important. Good work by the team." },
+  { name: "Raghavendra Pai", location: "Kundapura", rating: 4, text: "My daughter found a boy from Byndoor through this. Other apps had too many random profiles but here all matches were from our community only." },
+  { name: "Swetha Fernandes", location: "Mangalore", rating: 5, text: "Not your typical matrimony site. Profiles feel real here. Been talking to Kevin for 4 months now 🤞" },
+  { name: "Suresh Nayak", location: "Udupi", rating: 5, text: "Simple and easy. Got 3-4 interests in the first week itself for my son's profile." },
+  { name: "Priya Kamath", location: "Manipal", rating: 4, text: "Less profiles compared to big apps but quality is way better. Every match was from the coastal belt. Met Vikram's family last month — both sides happy 🙏" },
 ];
 
 export default function Testimonials() {

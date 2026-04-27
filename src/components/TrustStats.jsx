@@ -73,7 +73,7 @@ export default function TrustStats() {
         </div>
       </div>
 
-      <WaveBorder color="#FAF9F6" />
+
     </section>
   );
 }

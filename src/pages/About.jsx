@@ -8,13 +8,13 @@ import { motion } from 'framer-motion';
 
 export default function About() {
   return (
-    <main className="pb-20">
+    <main>
       <PageHeader 
         title="About Coastal Shaadi" 
         subtitle="Where coastal traditions meet modern matchmaking" 
       />
       
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-16">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-8">
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <motion.div 
             initial={{ opacity: 0, x: -20 }}

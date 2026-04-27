@@ -24,7 +24,15 @@ export default function Contact() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
-      const data = await res.json();
+      
+      let data;
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.indexOf("application/json") !== -1) {
+        data = await res.json();
+      } else {
+        data = { message: 'The server encountered an unexpected error.' };
+      }
+
       if (res.ok) {
         setStatus({ type: 'success', message: 'Your message has been sent successfully! We will get back to you soon.' });
         setFormData({ firstName: '', lastName: '', email: '', message: '' });

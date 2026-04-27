@@ -55,7 +55,7 @@ export const sendApprovalEmail = async (email, firstName) => {
       <p>Great news! Your account has been <strong>approved</strong> by our team.</p>
       <p>You can now log in to your dashboard, complete your profile, and start connecting with other active members.</p>
       <div style="text-align: center; margin: 30px 0;">
-        <a href="https://coastal-shaadi.vercel.app/active-members" style="background-color: #d946ef; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Login Now</a>
+        <a href="https://coastalshaadi.com/active-members" style="background-color: #d946ef; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Login Now</a>
       </div>
       <p>Best Regards,</p>
       <p><strong>The Coastal Shaadi Team</strong></p>
@@ -92,7 +92,7 @@ export const sendAdminNotificationEmail = async (user) => {
       <p><strong>Gender:</strong> ${user.gender}</p>
       <p><strong>Religion & Caste:</strong> ${user.religion} - ${user.caste}</p>
       <div style="text-align: center; margin: 30px 0;">
-        <a href="https://coastal-shaadi.vercel.app/admin" style="background-color: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Log in to Approve/Reject</a>
+        <a href="https://coastalshaadi.com/admin" style="background-color: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Log in to Approve/Reject</a>
       </div>
     </div>
   `;

@@ -17,6 +17,29 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// ========== AUTH MIDDLEWARE ==========
+const authMiddleware = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1] || req.headers['x-auth-token'];
+  if (!token) return res.status(401).json({ message: 'No token, authorization denied' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.userId = decoded.user.id;
+    next();
+  } catch (err) {
+    return res.status(401).json({ message: 'Token expired or invalid' });
+  }
+};
+
+const adminMiddleware = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.userId).select('role');
+    if (!user || user.role !== 'admin') return res.status(403).json({ message: 'Admin access required' });
+    next();
+  } catch (err) {
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
 const MONGODB_URI = process.env.MONGODB_URI;
 const JWT_SECRET = process.env.JWT_SECRET;
 const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET;
@@ -97,8 +120,16 @@ app.post('/api/register', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Generate unique member ID
-    const memberId = 'CS-' + Math.floor(10000000 + Math.random() * 90000000);
+    // Generate unique member ID with collision retry
+    let memberId;
+    let attempts = 0;
+    while (attempts < 5) {
+      memberId = 'CS-' + Math.floor(10000000 + Math.random() * 90000000);
+      const exists = await User.findOne({ memberId });
+      if (!exists) break;
+      attempts++;
+      if (attempts >= 5) return res.status(500).json({ message: 'Failed to generate unique ID. Please try again.' });
+    }
 
     user = new User({
       firstName, lastName, email, phone, password: hashedPassword,
@@ -124,7 +155,7 @@ app.post('/api/register', async (req, res) => {
     res.status(201).json({ token, user: { id: user.id, firstName, lastName, email, gender, religion, caste, memberId, role: user.role, status: user.status, memberType: user.memberType, planExpiry: user.planExpiry, whatsappNumber: user.whatsappNumber, whatsappConsent: user.whatsappConsent } });
   } catch (err) {
     console.error('REGISTER ERROR:', err);
-    res.status(500).json({ message: 'Server error: ' + err.message, error: err.message, stack: err.stack });
+    res.status(500).json({ message: 'Registration failed. Please try again.' });
   }
 });
 
@@ -148,7 +179,7 @@ app.post('/api/login', async (req, res) => {
     res.json({ token, user: { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email, gender: user.gender, religion: user.religion, caste: user.caste, memberId: user.memberId, profileData: user.profileData, image: user.image, role: user.role, status: user.status, memberType: user.memberType, planExpiry: user.planExpiry, whatsappNumber: user.whatsappNumber, whatsappConsent: user.whatsappConsent } });
   } catch (err) {
     console.error('LOGIN ERROR:', err);
-    res.status(500).json({ message: 'Server error: ' + err.message, error: err.message, stack: err.stack });
+    res.status(500).json({ message: 'Login failed. Please try again.' });
   }
 });
 
@@ -168,7 +199,9 @@ app.put('/api/profile', async (req, res) => {
 
     const updateData = {};
     if (profileData) {
-      updateData.profileData = { ...user.profileData, ...profileData };
+      // Sanitize: never allow memberType or planExpiry inside profileData
+      const { memberType: _mt, planExpiry: _pe, password: _pw, role: _r, status: _s, ...cleanData } = profileData;
+      updateData.profileData = { ...user.profileData, ...cleanData };
       
       // Extract top-level fields
       const topLevelFields = ['firstName', 'lastName', 'email', 'phone', 'dob', 'religion', 'caste', 'gender'];
@@ -300,7 +333,7 @@ app.get('/api/members', async (req, res) => {
 
 // ========== ADMIN API ==========
 
-app.get('/api/admin/users', async (req, res) => {
+app.get('/api/admin/users', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const users = await User.find({ role: 'user' }).select('-password').sort({ createdAt: -1 });
     res.json(users);
@@ -310,7 +343,7 @@ app.get('/api/admin/users', async (req, res) => {
   }
 });
 
-app.put('/api/admin/users/:id/status', async (req, res) => {
+app.put('/api/admin/users/:id/status', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const { status } = req.body;
     if (!['pending', 'approved', 'rejected'].includes(status)) {
@@ -338,7 +371,7 @@ app.put('/api/admin/users/:id/status', async (req, res) => {
 });
 
 // Admin: Update user's membership plan (CMS-ready)
-app.put('/api/admin/users/:id/plan', async (req, res) => {
+app.put('/api/admin/users/:id/plan', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const { memberType, planExpiry } = req.body;
     if (!['Free', 'Basic', 'Premium', 'Elite'].includes(memberType)) {
@@ -357,28 +390,17 @@ app.put('/api/admin/users/:id/plan', async (req, res) => {
   }
 });
 
-// Auto-migrate: Reset all users to 'Free' (one-time fix for seed data that was incorrectly set to Elite)
-// Once Razorpay is live, remove this block — only the checkout flow should upgrade users
+// Clean stale memberType from inside profileData (safe to run repeatedly)
 (async () => {
   try {
     await mongoose.connection.asPromise();
-    // Reset ALL non-admin users to Free (fixes seed data issue)
-    const result = await User.updateMany(
-      { role: 'user' },
-      { $set: { memberType: 'Free' }, $unset: { planExpiry: '' } }
-    );
-    if (result.modifiedCount > 0) {
-      console.log(`Reset ${result.modifiedCount} users to Free plan (seed data fix)`);
-    }
-    // Clean stale memberType from inside profileData for all users
     await User.updateMany(
       { 'profileData.memberType': { $exists: true } },
       { $unset: { 'profileData.memberType': '' } }
     );
-  } catch (e) {
-    // Will run once DB is connected
-  }
+  } catch (e) {}
 })();
+
 app.post('/api/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
@@ -478,10 +500,16 @@ app.get('/api/conversations/:userId', async (req, res) => {
   }
 });
 
-// Start or get existing conversation between two users
+// Start or get existing conversation between two users (plan-gated)
 app.post('/api/conversations', async (req, res) => {
   try {
     const { senderId, receiverId } = req.body;
+
+    // Server-side plan check: Free users cannot initiate conversations
+    const sender = await User.findById(senderId).select('memberType');
+    if (sender && sender.memberType === 'Free') {
+      return res.status(403).json({ message: 'Upgrade your plan to start conversations.' });
+    }
 
     // Check if conversation already exists
     let conversation = await Conversation.findOne({
@@ -517,10 +545,17 @@ app.get('/api/messages/:conversationId', async (req, res) => {
   }
 });
 
-// Send a message
+// Send a message (server-side plan enforcement)
 app.post('/api/messages', async (req, res) => {
   try {
     const { conversationId, senderId, text } = req.body;
+
+    // Server-side plan check: Free users cannot send messages
+    const sender = await User.findById(senderId).select('memberType');
+    if (!sender) return res.status(404).json({ message: 'Sender not found' });
+    if (sender.memberType === 'Free') {
+      return res.status(403).json({ message: 'Upgrade your plan to send messages.' });
+    }
 
     const message = new Message({ conversationId, senderId, text });
     await message.save();

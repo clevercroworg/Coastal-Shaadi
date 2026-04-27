@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 
 export const citiesByState = {
   'Karnataka': [
@@ -98,9 +98,15 @@ export const useMembers = () => useContext(MemberContext);
 
 export const MemberProvider = ({ children }) => {
   const [members, setMembers] = useState([]);
-  const [shortlistedIds, setShortlistedIds] = useState([]);
-  const [interestedIds, setInterestedIds] = useState([]);
-  const [ignoredIds, setIgnoredIds] = useState([]);
+  const [shortlistedIds, setShortlistedIds] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('shortlistedIds') || '[]'); } catch { return []; }
+  });
+  const [interestedIds, setInterestedIds] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('interestedIds') || '[]'); } catch { return []; }
+  });
+  const [ignoredIds, setIgnoredIds] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('ignoredIds') || '[]'); } catch { return []; }
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [userProfile, setUserProfile] = useState(() => {
     try {
@@ -183,37 +189,47 @@ export const MemberProvider = ({ children }) => {
   }, []);
 
   const toggleShortlist = (id) => {
-    setShortlistedIds(prev =>
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
+    setShortlistedIds(prev => {
+      const next = prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id];
+      localStorage.setItem('shortlistedIds', JSON.stringify(next));
+      return next;
+    });
   };
 
   const toggleInterest = (id) => {
-    setInterestedIds(prev =>
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
+    setInterestedIds(prev => {
+      const next = prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id];
+      localStorage.setItem('interestedIds', JSON.stringify(next));
+      return next;
+    });
   };
 
   const toggleIgnore = (id) => {
     setIgnoredIds(prev => {
       if (prev.includes(id)) {
-        return prev.filter(i => i !== id);
+        const next = prev.filter(i => i !== id);
+        localStorage.setItem('ignoredIds', JSON.stringify(next));
+        return next;
       } else {
-        setShortlistedIds(s => s.filter(i => i !== id));
-        setInterestedIds(inIds => inIds.filter(i => i !== id));
-        return [...prev, id];
+        setShortlistedIds(s => {
+          const ns = s.filter(i => i !== id);
+          localStorage.setItem('shortlistedIds', JSON.stringify(ns));
+          return ns;
+        });
+        setInterestedIds(inIds => {
+          const ni = inIds.filter(i => i !== id);
+          localStorage.setItem('interestedIds', JSON.stringify(ni));
+          return ni;
+        });
+        const next = [...prev, id];
+        localStorage.setItem('ignoredIds', JSON.stringify(next));
+        return next;
       }
     });
   };
 
-  // Helper to get unique values for filter dropdowns based on filtered members
-  const getUniqueValues = (field) => {
-    const filtered = getFilteredMembers();
-    return [...new Set(filtered.map(m => m[field]).filter(v => v && v !== '-'))];
-  };
-
-  // Dynamically filter members based on logged-in user
-  const getFilteredMembers = () => {
+  // Dynamically filter members based on logged-in user (memoized)
+  const filteredMembers = useMemo(() => {
     if (userProfile) {
       return members.filter(m => {
         // Hide self
@@ -229,11 +245,16 @@ export const MemberProvider = ({ children }) => {
       });
     }
     return members;
-  };
+  }, [members, userProfile]);
+
+  // Helper to get unique values for filter dropdowns based on filtered members
+  const getUniqueValues = useCallback((field) => {
+    return [...new Set(filteredMembers.map(m => m[field]).filter(v => v && v !== '-'))];
+  }, [filteredMembers]);
 
   return (
     <MemberContext.Provider value={{
-      members: getFilteredMembers(),
+      members: filteredMembers,
       shortlistedIds,
       interestedIds,
       ignoredIds,

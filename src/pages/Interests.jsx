@@ -69,6 +69,11 @@ export default function Interests() {
   };
 
   const startChat = (memberId) => {
+    const currentUser = JSON.parse(localStorage.getItem('userProfile') || '{}');
+    if (!currentUser.memberType || currentUser.memberType === 'Free') {
+      window.location.href = '/pricing';
+      return;
+    }
     sessionStorage.setItem('pendingChatMemberId', memberId);
     window.location.href = '/messaging';
   };
@@ -117,7 +122,7 @@ export default function Interests() {
           {user?.image ? (
             <img src={user.image} alt={name} className="w-16 h-16 rounded-xl object-cover" />
           ) : (
-            <div className={`w-16 h-16 rounded-xl flex items-center justify-center text-white font-bold text-lg ${avatarColors[Math.floor(Math.random() * avatarColors.length)]}`}>
+            <div className={`w-16 h-16 rounded-xl flex items-center justify-center text-white font-bold text-lg ${avatarColors[(user?._id || user?.memberId || '').charCodeAt(0) % avatarColors.length]}`}>
               {getInitials(name)}
             </div>
           )}

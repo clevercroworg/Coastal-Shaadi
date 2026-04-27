@@ -24,7 +24,14 @@ export default function AdminDashboard() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/admin/users');
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/admin/users', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.status === 401 || res.status === 403) {
+        navigate('/admin/login');
+        return;
+      }
       if (!res.ok) throw new Error('Failed to fetch users');
       const data = await res.json().catch(() => []);
       setUsers(data);
@@ -37,9 +44,10 @@ export default function AdminDashboard() {
 
   const handleStatusChange = async (userId, newStatus) => {
     try {
+      const token = localStorage.getItem('token');
       const res = await fetch(`/api/admin/users/${userId}/status`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ status: newStatus })
       });
       if (!res.ok) throw new Error('Failed to update status');

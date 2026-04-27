@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Check, Crown, Sparkles, Zap, Star, ArrowLeft, Shield, Lock, CreditCard, Phone, Mail, User, ChevronRight, X } from 'lucide-react';
@@ -58,6 +58,11 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
   const selectedPlan = planData[plan?.toLowerCase()];
@@ -103,6 +108,7 @@ export default function CheckoutPage() {
     setError('');
     // Simulate payment processing UI delay
     setTimeout(async () => {
+      if (!mountedRef.current) return;
       try {
         const userId = userProfile.id || userProfile._id || userProfile.memberId;
         if (!userId) throw new Error('User ID not found');
@@ -125,12 +131,12 @@ export default function CheckoutPage() {
         localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
         window.dispatchEvent(new Event('profileUpdated'));
 
-        setSuccess(true);
+        if (mountedRef.current) setSuccess(true);
       } catch (err) {
         console.error('Upgrade error:', err);
-        setError(err.message || 'Something went wrong. Please try again or contact support.');
+        if (mountedRef.current) setError(err.message || 'Something went wrong. Please try again or contact support.');
       } finally {
-        setLoading(false);
+        if (mountedRef.current) setLoading(false);
       }
     }, 2000);
   };

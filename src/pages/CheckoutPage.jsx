@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Check, Crown, Sparkles, Zap, Star, ArrowLeft, Shield, Lock, CreditCard, Phone, Mail, User, ChevronRight } from 'lucide-react';
+import { Check, Crown, Sparkles, Zap, Star, ArrowLeft, Shield, Lock, CreditCard, Phone, Mail, User, ChevronRight, X } from 'lucide-react';
 
 const planData = {
   basic: {
@@ -57,20 +57,32 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
 
   const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
   const selectedPlan = planData[plan?.toLowerCase()];
 
+  const planRank = { Free: 0, Basic: 1, Premium: 2, Elite: 3 };
+
   useEffect(() => {
     if (!userProfile.id && !userProfile._id) {
       navigate('/login');
+      return;
     }
     if (!selectedPlan) {
       navigate('/pricing');
+      return;
     }
     if (userProfile.status !== 'approved') {
-      alert('Your profile needs to be approved before you can purchase a plan.');
       navigate('/pricing');
+      return;
+    }
+    // Prevent downgrade
+    const currentRank = planRank[userProfile.memberType || 'Free'];
+    const targetRank = planRank[selectedPlan.name];
+    if (targetRank <= currentRank) {
+      navigate('/pricing');
+      return;
     }
   }, []);
 
@@ -88,6 +100,7 @@ export default function CheckoutPage() {
 
   const handlePayment = async () => {
     setLoading(true);
+    setError('');
     // Simulate payment processing UI delay
     setTimeout(async () => {
       try {
@@ -100,7 +113,10 @@ export default function CheckoutPage() {
           body: JSON.stringify({ userId, plan: plan })
         });
         
-        if (!res.ok) throw new Error('Failed to upgrade plan');
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({ message: 'Unknown error' }));
+          throw new Error(errData.message || 'Failed to upgrade plan');
+        }
         
         const data = await res.json();
         
@@ -112,7 +128,7 @@ export default function CheckoutPage() {
         setSuccess(true);
       } catch (err) {
         console.error('Upgrade error:', err);
-        alert('Payment processed, but failed to apply upgrade. Please contact support.');
+        setError(err.message || 'Something went wrong. Please try again or contact support.');
       } finally {
         setLoading(false);
       }
@@ -321,6 +337,20 @@ export default function CheckoutPage() {
                   <span className="text-primary text-lg">₹{total.toLocaleString()}</span>
                 </div>
               </div>
+
+
+              {/* Error Message */}
+              {error && (
+                <div className="mt-4 bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-start gap-3">
+                  <div className="w-5 h-5 bg-red-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                    <X size={12} className="text-red-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-red-800">Payment Failed</p>
+                    <p className="text-xs text-red-600 mt-0.5">{error}</p>
+                  </div>
+                </div>
+              )}
 
               {/* Pay Button */}
               <motion.button

@@ -77,9 +77,12 @@ export default function Packages() {
   const currentPlan = userProfile.memberType || 'Free';
   const isApproved = userProfile.status === 'approved';
 
+  const planRank = { Free: 0, Basic: 1, Premium: 2, Elite: 3 };
+
   const handleSelectPlan = (plan) => {
     if (plan.name === currentPlan) return;
     if (plan.name === 'Free') return;
+    if (planRank[plan.name] <= planRank[currentPlan]) return; // block downgrades
     if (!isApproved) {
       alert('Your profile needs to be approved before you can purchase a plan. Please wait for admin approval.');
       return;
@@ -90,12 +93,16 @@ export default function Packages() {
   const getButtonText = (plan) => {
     if (plan.name === currentPlan) return '✓ Current Plan';
     if (plan.name === 'Free') return 'Free Forever';
+    if (planRank[plan.name] < planRank[currentPlan]) return 'Included in Your Plan';
     return plan.cta;
   };
 
   const getButtonStyle = (plan) => {
     if (plan.name === currentPlan) {
       return 'bg-green-100 text-green-700 cursor-default border border-green-200';
+    }
+    if (planRank[plan.name] < planRank[currentPlan]) {
+      return 'bg-gray-100 text-gray-400 cursor-default border border-gray-200';
     }
     if (plan.highlight) {
       return 'bg-gradient-to-r from-accent to-yellow-500 text-gray-900 shadow-[0_4px_20px_rgba(212,175,55,0.4)] hover:shadow-[0_8px_30px_rgba(212,175,55,0.5)]';

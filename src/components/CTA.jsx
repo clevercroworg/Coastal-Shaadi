@@ -44,9 +44,7 @@ export default function CTA() {
       <div className="bg-gradient-to-r from-primary via-rose-600 to-primary py-5">
         <div className="max-w-5xl mx-auto px-6 text-center">
           <p className="text-white font-semibold text-sm sm:text-base tracking-wide">
-            Free support: <span className="font-bold">+91 96321 26045</span>
-            <span className="mx-3 text-white/40">|</span>
-            Email: <span className="font-bold uppercase">hello@coastalshaadi.com</span>
+            Email: <a href="mailto:support@coastalshaadi.com" className="font-bold uppercase hover:underline">support@coastalshaadi.com</a>
           </p>
         </div>
       </div>

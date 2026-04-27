@@ -65,11 +65,10 @@ export default function ActiveMembers() {
     if (filters.id && !member.id.includes(filters.id)) return false;
     if (filters.minAge && member.age < parseInt(filters.minAge)) return false;
     if (filters.maxAge && member.age > parseInt(filters.maxAge)) return false;
-    if (filters.maritalStatus && member.maritalStatus !== filters.maritalStatus) return false;
-    if (filters.religion && member.religion !== filters.religion) return false;
-    if (filters.caste && member.caste !== filters.caste) return false;
-    if (filters.subCaste && member.subCaste !== filters.subCaste) return false;
-    if (filters.language && member.language !== filters.language) return false;
+    if (filters.maritalStatus && member.maritalStatus?.toLowerCase() !== filters.maritalStatus.toLowerCase()) return false;
+    if (filters.religion && member.religion?.toLowerCase() !== filters.religion.toLowerCase()) return false;
+    if (filters.caste && member.caste?.toLowerCase() !== filters.caste.toLowerCase()) return false;
+    if (filters.language && member.language?.toLowerCase() !== filters.language.toLowerCase()) return false;
     if (filters.profession && !member.profession.toLowerCase().includes(filters.profession.toLowerCase())) return false;
     if (filters.country && member.country?.toLowerCase() !== filters.country?.toLowerCase()) return false;
     if (filters.state && member.state?.toLowerCase() !== filters.state?.toLowerCase()) return false;

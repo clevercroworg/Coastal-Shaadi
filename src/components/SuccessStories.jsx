@@ -8,21 +8,21 @@ const stories = [
     image: "/images/couple-1.png",
     names: "Sneha & Aditya",
     location: "Mangalore",
-    quote: "We found each other through Coastal Shaadi and felt an instant connection rooted in our shared traditions. Thank you for making our dream real!",
+    quote: "Amma kept saying 'try this site once' and I'm so glad I listened. Aditya and I connected over our love for Tulu cinema and the rest just happened naturally!",
     married: "Dec 2025"
   },
   {
     image: "/images/couple-2.png",
     names: "Maria & Joel",
     location: "Udupi",
-    quote: "What started as a profile visit turned into a beautiful love story. The privacy features made us feel safe and respected throughout.",
+    quote: "We both wanted someone from our parish community. Joel's profile was the first one I saw and something just felt right. Got married at St. Mary's last March!",
     married: "Mar 2025"
   },
   {
     image: "/images/couple-3.png",
     names: "Priya & Karthik",
     location: "Kundapura",
-    quote: "Our families are so happy! Coastal Shaadi understood our values and matched us perfectly. The best start to forever.",
+    quote: "My dad registered my profile here. Within a month Karthik's family reached out. Two families from Kundapura who never knew each other — now we're one family!",
     married: "Oct 2024"
   },
 ];

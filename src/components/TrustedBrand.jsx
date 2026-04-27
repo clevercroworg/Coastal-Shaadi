@@ -7,19 +7,19 @@ const testimonials = [
     image: "/images/couple-1.png",
     name: "Sneha & Aditya",
     location: "Mangalore",
-    text: "We found each other through Coastal Shaadi and felt an instant connection rooted in our shared Tulu traditions. Our families are so happy!"
+    text: "We both being Bunts, our families were particular about traditions. Found Aditya's profile here and everything just fell into place. Married 6 months now! 😊"
   },
   {
     image: "/images/couple-portrait.png",
     name: "Deepthi & Raghav",
     location: "Udupi",
-    text: "The privacy controls are outstanding. My photo was only visible after mutual interest. That level of respect is rare in matrimony platforms."
+    text: "My parents were worried about online platforms but Coastal Shaadi felt different — profiles were genuine and from our own community. So glad we tried it."
   },
   {
     image: "/images/couple-2.png",
     name: "Maria & Joel",
     location: "Kundapura",
-    text: "What started as a profile visit turned into a beautiful love story. Coastal Shaadi respected our Christian values throughout the process."
+    text: "Church wedding last March! Joel's family is from Barkur and mine from Kundapura. Coastal Shaadi made the connection that our families couldn't find on their own."
   },
 ];
 

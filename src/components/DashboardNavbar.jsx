@@ -68,7 +68,7 @@ export default function DashboardNavbar() {
 
 
   return (
-    <div className="bg-white border-b border-gray-200 shadow-sm relative z-20 mt-6 sm:mt-8">
+    <div className="bg-white border-b border-gray-200 shadow-sm relative z-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center w-full h-[54px] relative">
           <div 

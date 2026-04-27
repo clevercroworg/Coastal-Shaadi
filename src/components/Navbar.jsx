@@ -36,9 +36,14 @@ export default function Navbar() {
     links.splice(2, 0, { name: 'My Profile', path: '/profile' });
   }
 
+  // Pages with dark hero backgrounds where transparent navbar works
+  const darkHeroPages = ['/', '/about', '/success-stories'];
+  const hasDarkHero = darkHeroPages.includes(location.pathname);
+  const isScrolledOrSolid = scrolled || !hasDarkHero;
+
   return (
     <nav className={`fixed w-full z-50 transition-all duration-500 ${
-      scrolled
+      isScrolledOrSolid
         ? 'bg-white/95 backdrop-blur-lg shadow-[0_2px_20px_rgba(128,0,0,0.08)] py-3'
         : 'bg-gradient-to-b from-black/50 to-transparent py-5'
     }`}>
@@ -50,10 +55,10 @@ export default function Navbar() {
             <img
               src="/Coastal%20Shaadi%201.png"
               alt="Coastal Shaadi"
-              className="h-14 lg:h-16 max-w-[240px] w-auto transition-all duration-300"
+              className="h-12 lg:h-16 max-w-[200px] lg:max-w-[240px] w-auto transition-all duration-300"
             />
-            <span className={`absolute bottom-0 left-[32%] text-[9px] tracking-[0.15em] uppercase font-medium whitespace-nowrap hidden sm:block transition-colors duration-300 ${scrolled ? 'text-gray-600' : 'text-white/90'}`}>One Step To Forever</span>
-            <span className={`absolute -bottom-0.5 left-[32%] text-[8px] tracking-[0.15em] uppercase font-medium whitespace-nowrap sm:hidden transition-colors duration-300 ${scrolled ? 'text-gray-600' : 'text-white/90'}`}>One Step To Forever</span>
+            <span className={`absolute bottom-0 left-[32%] text-[9px] tracking-[0.15em] uppercase font-medium whitespace-nowrap hidden sm:block transition-colors duration-300 ${isScrolledOrSolid ? 'text-gray-600' : 'text-white/90'}`}>One Step To Forever</span>
+            <span className={`absolute -bottom-0.5 left-[32%] text-[8px] tracking-[0.15em] uppercase font-medium whitespace-nowrap sm:hidden transition-colors duration-300 ${isScrolledOrSolid ? 'text-gray-600' : 'text-white/90'}`}>One Step To Forever</span>
           </Link>
 
           {/* Desktop Links */}
@@ -64,8 +69,8 @@ export default function Navbar() {
                 to={item.path}
                 className={`text-sm font-medium relative group transition-colors duration-300 ${
                   location.pathname === item.path
-                    ? (scrolled ? 'text-primary' : 'text-accent')
-                    : (scrolled ? 'text-gray-700 hover:text-primary' : 'text-white/90 hover:text-white')
+                    ? (isScrolledOrSolid ? 'text-primary' : 'text-accent')
+                    : (isScrolledOrSolid ? 'text-gray-700 hover:text-primary' : 'text-white/90 hover:text-white')
                 }`}
               >
                 {item.name}
@@ -87,14 +92,14 @@ export default function Navbar() {
           {/* Mobile */}
           <div className="lg:hidden flex items-center gap-3">
             {!isLoggedIn && (
-              <Link to="/login" className={`px-5 py-2 rounded-full text-xs font-semibold shadow transition-all duration-300 ${scrolled ? 'bg-primary text-white' : 'bg-white/20 text-white backdrop-blur-sm border border-white/30 hover:bg-white/30'}`}>
+              <Link to="/login" className={`px-5 py-2 rounded-full text-xs font-semibold shadow transition-all duration-300 ${isScrolledOrSolid ? 'bg-primary text-white' : 'bg-white/20 text-white backdrop-blur-sm border border-white/30 hover:bg-white/30'}`}>
                 Login
               </Link>
             )}
             <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
               {mobileMenuOpen
-                ? <X size={26} className={scrolled ? 'text-gray-900' : 'text-white'} />
-                : <Menu size={26} className={scrolled ? 'text-gray-900' : 'text-white'} />
+                ? <X size={26} className={isScrolledOrSolid ? 'text-gray-900' : 'text-white'} />
+                : <Menu size={26} className={isScrolledOrSolid ? 'text-gray-900' : 'text-white'} />
               }
             </button>
           </div>

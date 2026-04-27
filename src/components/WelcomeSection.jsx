@@ -38,7 +38,7 @@ export default function WelcomeSection() {
                 whileHover={{ rotate: 2, scale: 1.02 }}
                 className="absolute bottom-0 right-0 sm:right-4 w-[60%] sm:w-[55%] h-[60%] rounded-2xl overflow-hidden shadow-[0_15px_50px_rgba(0,0,0,0.12)] border-4 border-white z-20"
               >
-                <img src="/images/couple-beach.png" alt="Couple on Beach" className="w-full h-full object-cover"/>
+                <img src="/images/couple-christian-outdoor.png" alt="Christian Couple" className="w-full h-full object-cover"/>
               </motion.div>
 
               {/* Decorative ring image */}

@@ -78,8 +78,8 @@ export default function Navbar() {
                 Logout
               </button>
             ) : (
-              <Link to="/login?type=register" className="bg-gradient-to-r from-primary to-primary-hover text-white px-7 py-2.5 rounded-full text-sm font-semibold shadow-lg hover:shadow-[0_4px_20px_rgba(128,0,0,0.4)] transition-all duration-300 transform hover:-translate-y-0.5 border border-primary/20 flex items-center justify-center">
-                Register Free
+              <Link to="/login" className="bg-gradient-to-r from-primary to-primary-hover text-white px-7 py-2.5 rounded-full text-sm font-semibold shadow-lg hover:shadow-[0_4px_20px_rgba(128,0,0,0.4)] transition-all duration-300 transform hover:-translate-y-0.5 border border-primary/20 flex items-center justify-center">
+                Login
               </Link>
             )}
           </div>
@@ -130,8 +130,8 @@ export default function Navbar() {
                     Logout
                   </button>
                 ) : (
-                  <Link to="/login?type=register" onClick={() => setMobileMenuOpen(false)} className="block w-full text-center bg-primary text-white py-3 rounded-lg font-semibold shadow-md">
-                    Register Free
+                  <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="block w-full text-center bg-primary text-white py-3 rounded-lg font-semibold shadow-md">
+                    Login
                   </Link>
                 )}
               </div>

@@ -52,8 +52,8 @@ export default function Navbar() {
               alt="Coastal Shaadi"
               className="h-14 lg:h-16 max-w-[240px] w-auto transition-all duration-300"
             />
-            <span className={`absolute bottom-1 left-[32%] text-[9px] tracking-[0.15em] uppercase font-medium whitespace-nowrap hidden sm:block transition-colors duration-300 ${scrolled ? 'text-gray-600' : 'text-white/90'}`}>One Step To Forever</span>
-            <span className={`absolute -bottom-1 left-[32%] text-[8px] tracking-[0.15em] uppercase font-medium whitespace-nowrap sm:hidden transition-colors duration-300 ${scrolled ? 'text-gray-600' : 'text-white/90'}`}>One Step To Forever</span>
+            <span className={`absolute -bottom-2 left-[32%] text-[9px] tracking-[0.15em] uppercase font-medium whitespace-nowrap hidden sm:block transition-colors duration-300 ${scrolled ? 'text-gray-600' : 'text-white/90'}`}>One Step To Forever</span>
+            <span className={`absolute -bottom-3 left-[32%] text-[8px] tracking-[0.15em] uppercase font-medium whitespace-nowrap sm:hidden transition-colors duration-300 ${scrolled ? 'text-gray-600' : 'text-white/90'}`}>One Step To Forever</span>
           </Link>
 
           {/* Desktop Links */}

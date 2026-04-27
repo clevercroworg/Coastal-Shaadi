@@ -85,7 +85,7 @@ export default function WelcomeSection() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-400 font-medium">Get Support</p>
-                    <p className="text-sm font-bold text-gray-800">support@coastalshaadi.com</p>
+                    <a href="mailto:support@coastalshaadi.com" className="text-sm font-bold text-gray-800 hover:text-primary transition-colors">support@coastalshaadi.com</a>
                   </div>
                 </div>
               </div>

@@ -75,7 +75,7 @@ export default function Footer() {
               <ul className="space-y-4">
                 <li className="flex items-center gap-3">
                   <Mail size={16} className="text-accent shrink-0" />
-                  <span className="text-gray-400 text-sm">support@coastalshaadi.com</span>
+                  <a href="mailto:support@coastalshaadi.com" className="text-gray-400 text-sm hover:text-white transition-colors">support@coastalshaadi.com</a>
                 </li>
               </ul>
             </div>

@@ -28,7 +28,13 @@ export default function MemberCard({ member, onUpgradePrompt, onViewProfile }) {
   };
 
   return (
-    <div className={`bg-white rounded-xl shadow-sm border ${member.isBoosted ? 'border-amber-200 ring-1 ring-amber-100' : 'border-gray-100'} p-5 flex flex-col md:flex-row gap-5 relative transition-all duration-300 hover:shadow-md ${isIgnored ? 'opacity-40' : ''}`}>
+    <div className={`bg-white rounded-xl shadow-sm border ${
+      member.isBoosted ? 'border-amber-300 ring-2 ring-amber-100 shadow-amber-100/50' : 
+      member.type === 'Elite' ? 'border-amber-200 ring-1 ring-amber-50' :
+      member.type === 'Premium' ? 'border-purple-200 ring-1 ring-purple-50' :
+      member.type === 'Basic' ? 'border-blue-200 ring-1 ring-blue-50' :
+      'border-gray-100'
+    } p-5 flex flex-col md:flex-row gap-5 relative transition-all duration-300 hover:shadow-md ${isIgnored ? 'opacity-40' : ''}`}>
       {/* Badge */}
       <div className="absolute top-4 right-4 flex items-center gap-2">
         {member.isBoosted && (

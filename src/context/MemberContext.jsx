@@ -150,7 +150,7 @@ export const MemberProvider = ({ children }) => {
               id: user.memberId || user._id,
               memberId: user.memberId,
               name: `${user.firstName} ${user.lastName}`,
-              type: user.memberType || 'Premium',
+              type: user.memberType || 'Free',
               age: calculateAge(user.dob) !== '-' ? calculateAge(user.dob) : (user.profileData?.age || '-'),
               height: user.profileData?.height || '-',
               gender: user.gender || '-',

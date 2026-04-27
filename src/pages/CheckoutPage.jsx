@@ -88,10 +88,34 @@ export default function CheckoutPage() {
 
   const handlePayment = async () => {
     setLoading(true);
-    // Simulate payment processing - replace with Razorpay/Stripe later
-    setTimeout(() => {
-      setSuccess(true);
-      setLoading(false);
+    // Simulate payment processing UI delay
+    setTimeout(async () => {
+      try {
+        const userId = userProfile.id || userProfile._id || userProfile.memberId;
+        if (!userId) throw new Error('User ID not found');
+
+        const res = await fetch('/api/upgrade', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, plan: plan })
+        });
+        
+        if (!res.ok) throw new Error('Failed to upgrade plan');
+        
+        const data = await res.json();
+        
+        // Update local storage so the UI reflects the new membership immediately
+        const updatedProfile = { ...userProfile, memberType: data.user.memberType, planExpiry: data.user.planExpiry };
+        localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
+        window.dispatchEvent(new Event('profileUpdated'));
+
+        setSuccess(true);
+      } catch (err) {
+        console.error('Upgrade error:', err);
+        alert('Payment processed, but failed to apply upgrade. Please contact support.');
+      } finally {
+        setLoading(false);
+      }
     }, 2000);
   };
 

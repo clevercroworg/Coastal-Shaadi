@@ -250,8 +250,23 @@ export default function Messaging() {
       <div className="h-20"></div>
       <DashboardNavbar />
 
-      <div className="flex-1 flex flex-col max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-1" style={{ minHeight: '520px', maxHeight: 'calc(100vh - 200px)' }}>
+      <div className="flex-1 flex flex-col max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full relative">
+        {userData?.memberType === 'Free' && (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm rounded-2xl mx-4 sm:mx-6 lg:mx-8 my-6 border border-gray-100">
+            <div className="bg-white p-8 rounded-2xl shadow-xl text-center max-w-sm border border-gray-100">
+              <div className="w-16 h-16 bg-gradient-to-br from-primary to-[#6b0000] rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary/20">
+                <MessageSquarePlus className="w-8 h-8 text-white" />
+              </div>
+              <h2 className="text-2xl font-serif font-bold text-gray-900 mb-2">Messaging Locked</h2>
+              <p className="text-sm text-gray-500 mb-6">Upgrade to a Premium or Elite plan to start chatting directly with your matches.</p>
+              <a href="/pricing" className="block w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-bold transition-all shadow-lg shadow-primary/30">
+                View Upgrade Plans
+              </a>
+            </div>
+          </div>
+        )}
+
+        <div className={`bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-1 ${userData?.memberType === 'Free' ? 'opacity-20 pointer-events-none blur-sm' : ''}`} style={{ minHeight: '520px', maxHeight: 'calc(100vh - 200px)' }}>
 
           {/* Sidebar */}
           <div className={`border-r border-gray-100 flex flex-col bg-white shrink-0 ${activeConvId ? 'hidden lg:flex w-[340px]' : 'flex w-full lg:w-[340px]'}`}>

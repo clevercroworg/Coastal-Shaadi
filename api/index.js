@@ -190,6 +190,49 @@ app.put('/api/profile', async (req, res) => {
   }
 });
 
+app.post('/api/upgrade', async (req, res) => {
+  try {
+    const { userId, plan } = req.body;
+    if (!userId || !plan) return res.status(400).json({ message: 'User ID and plan are required' });
+
+    // Validate plan
+    const validPlans = {
+      basic: 'Basic',
+      premium: 'Premium',
+      elite: 'Elite'
+    };
+    
+    const targetMemberType = validPlans[plan.toLowerCase()];
+    if (!targetMemberType) return res.status(400).json({ message: 'Invalid plan selected' });
+
+    let user;
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      user = await User.findById(userId);
+    } else {
+      user = await User.findOne({ memberId: userId });
+    }
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // In a real scenario, this would be triggered by a Razorpay/Stripe webhook
+    const planExpiry = new Date();
+    if (targetMemberType === 'Basic') planExpiry.setMonth(planExpiry.getMonth() + 3);
+    else if (targetMemberType === 'Premium') planExpiry.setMonth(planExpiry.getMonth() + 6);
+    else if (targetMemberType === 'Elite') planExpiry.setFullYear(planExpiry.getFullYear() + 1);
+
+    const updatedUser = await User.findOneAndUpdate(
+      { _id: user._id },
+      { memberType: targetMemberType, planExpiry },
+      { new: true }
+    ).select('-password');
+
+    res.json({ message: 'Upgrade successful', user: updatedUser });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error during upgrade' });
+  }
+});
+
 app.get('/api/profile/:id', async (req, res) => {
   try {
     let user;

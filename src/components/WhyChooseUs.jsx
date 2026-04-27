@@ -21,7 +21,7 @@ export default function WhyChooseUs() {
         <SideLeaf side="left" className="top-[20%]" />
         <SideLeaf side="right" className="top-[40%]" />
 
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 pt-16 pb-32 relative z-10" ref={ref}>
+        <div className="max-w-7xl mx-auto px-6 lg:px-8 pt-10 pb-20 relative z-10" ref={ref}>
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Image with person */}
             <motion.div

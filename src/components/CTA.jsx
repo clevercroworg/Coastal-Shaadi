@@ -11,7 +11,7 @@ export default function CTA() {
   return (
     <section className="relative overflow-hidden">
       {/* Main CTA Block */}
-      <div className="relative bg-canvas py-20 lg:py-24 overflow-hidden">
+      <div className="relative bg-canvas py-10 lg:py-14 overflow-hidden">
         <SideLeaf side="left" />
         <SideLeaf side="right" />
         <LeafCorner className="absolute top-0 left-0 opacity-40 hidden lg:block" />

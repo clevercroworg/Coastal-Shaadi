@@ -26,7 +26,7 @@ export default function Testimonials() {
   };
 
   return (
-    <section className="relative py-20 lg:py-28 bg-canvas overflow-hidden">
+    <section className="relative py-10 lg:py-14 bg-canvas overflow-hidden">
       {/* Animated mandala in background */}
       <motion.div
         animate={{ rotate: 360 }}

@@ -28,7 +28,7 @@ export default function TrustedBrand() {
   const inView = useInView(ref, { once: true, margin: '-80px' });
 
   return (
-    <section className="relative py-20 lg:py-28 bg-canvas overflow-hidden">
+    <section className="relative py-10 lg:py-14 bg-canvas overflow-hidden">
       {/* Side leaves */}
       <SideLeaf side="left" />
       <SideLeaf side="right" />
@@ -42,7 +42,7 @@ export default function TrustedBrand() {
           initial={{ opacity: 0, y: 30 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.8 }}
-          className="text-center mb-16"
+          className="text-center mb-10"
         >
           <span className="text-accent text-xs tracking-[0.3em] uppercase font-bold mb-3 block font-serif">Trusted Brand</span>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-primary leading-tight">

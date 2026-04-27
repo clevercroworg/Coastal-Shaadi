@@ -16,7 +16,7 @@ const userSchema = new mongoose.Schema({
   image: { type: String },
   whatsappNumber: { type: String },
   whatsappConsent: { type: Boolean, default: false },
-  memberType: { type: String, enum: ['Free', 'Basic', 'Premium', 'Elite'], default: 'Elite' },
+  memberType: { type: String, enum: ['Free', 'Basic', 'Premium', 'Elite'], default: 'Free' },
   planExpiry: { type: Date },
   resetOtp: { type: String },
   resetOtpExpires: { type: Date },

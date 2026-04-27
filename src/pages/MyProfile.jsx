@@ -130,7 +130,7 @@ export default function MyProfile() {
           ...cleanProfileData,
           age: calculateAge(latestUser.dob) !== '-' ? calculateAge(latestUser.dob) : (cleanProfileData?.age || prev.age),
           // memberType MUST come from the top-level DB field, never from profileData
-          memberType: latestUser.memberType || prev.memberType || 'Elite',
+          memberType: latestUser.memberType || prev.memberType || 'Free',
         }));
       }
     } catch (e) {
@@ -166,7 +166,7 @@ export default function MyProfile() {
   const [profile, setProfile] = useState({
     name: userData ? `${userData.firstName} ${userData.lastName}` : '',
     memberId: userData?.memberId || '',
-    memberType: userData?.memberType || 'Elite',
+    memberType: userData?.memberType || 'Free',
     email: userData?.email || '',
     phone: userData?.phone || '',
     city: userData?.profileData?.city || '-',
@@ -373,9 +373,15 @@ export default function MyProfile() {
             <div className={`absolute top-5 right-6 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-semibold tracking-widest border ${
               profile.memberType === 'Elite'
                 ? 'bg-gradient-to-r from-accent/90 to-yellow-500/90 text-gray-900 border-accent/40 shadow-lg shadow-accent/20'
+                : profile.memberType === 'Premium'
+                ? 'bg-gradient-to-r from-purple-500/90 to-purple-600/90 text-white border-purple-400/40 shadow-lg'
+                : profile.memberType === 'Basic'
+                ? 'bg-gradient-to-r from-blue-500/90 to-blue-600/90 text-white border-blue-400/40 shadow-lg'
                 : 'bg-white/15 text-white border-white/20'
             }`}>
               {profile.memberType === 'Elite' && <span className="mr-1">👑</span>}
+              {profile.memberType === 'Premium' && <span className="mr-1">✨</span>}
+              {profile.memberType === 'Basic' && <span className="mr-1">⚡</span>}
               {profile.memberType.toUpperCase()} MEMBER
             </div>
             {/* Decorative gold line */}

@@ -313,17 +313,17 @@ app.put('/api/admin/users/:id/plan', async (req, res) => {
   }
 });
 
-// Auto-migrate: Set all existing users without memberType to 'Elite' & clean profileData
+// Auto-migrate: Set all existing users without memberType to 'Free' & clean profileData
 (async () => {
   try {
     await mongoose.connection.asPromise();
     // Set memberType for users who don't have it, or have it as null/empty
     const result = await User.updateMany(
       { $or: [{ memberType: { $exists: false } }, { memberType: null }, { memberType: '' }] },
-      { $set: { memberType: 'Elite' } }
+      { $set: { memberType: 'Free' } }
     );
     if (result.modifiedCount > 0) {
-      console.log(`Migrated ${result.modifiedCount} users to Elite plan`);
+      console.log(`Migrated ${result.modifiedCount} users to Free plan`);
     }
     // Clean stale memberType from inside profileData for all users
     await User.updateMany(

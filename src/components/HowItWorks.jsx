@@ -29,7 +29,7 @@ export default function HowItWorks() {
   const inView = useInView(ref, { once: true, margin: '-100px' });
 
   return (
-    <section className="relative py-24 lg:py-32 bg-canvas overflow-hidden">
+    <section className="relative py-10 lg:py-14 bg-canvas overflow-hidden">
       {/* Background decorative */}
       <CrossPattern className="absolute top-20 right-20 hidden lg:block" size={200} opacity={0.04} />
       <FlowerCorner className="absolute bottom-0 left-0 hidden lg:block" />
@@ -42,7 +42,7 @@ export default function HowItWorks() {
           initial={{ opacity: 0, y: 30 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.8 }}
-          className="text-center mb-20"
+          className="text-center mb-12"
         >
           <span className="text-accent text-sm tracking-[0.2em] uppercase font-bold mb-4 block">The Process</span>
           <h2 className="text-3xl md:text-5xl font-serif font-bold text-primary mb-4">How It Works</h2>

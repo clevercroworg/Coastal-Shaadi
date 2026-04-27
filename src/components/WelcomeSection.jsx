@@ -14,7 +14,7 @@ export default function WelcomeSection() {
       <SideLeaf side="left" className="top-[30%]" />
       <SideLeaf side="right" className="top-[60%]" />
 
-      <div className="py-20 lg:py-28 relative z-10" ref={ref}>
+      <div className="py-8 lg:py-12 relative z-10" ref={ref}>
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
 

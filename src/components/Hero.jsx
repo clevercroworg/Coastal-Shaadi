@@ -16,6 +16,7 @@ const maxDateString = maxDate.toISOString().split('T')[0];
 export default function Hero() {
   const [currentImage, setCurrentImage] = useState(0);
   const navigate = useNavigate();
+  const isLoggedIn = !!localStorage.getItem('token');
   const [religion, setReligion] = useState('');
   const [caste, setCaste] = useState('');
   const [error, setError] = useState('');
@@ -163,25 +164,19 @@ export default function Hero() {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
             <motion.button 
-              onClick={() => navigate('/login?type=register')}
+              onClick={() => {
+                if (isLoggedIn) navigate('/active-members');
+                else navigate('/login?type=register');
+              }}
               whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.98 }}
               className="bg-gradient-to-r from-accent to-yellow-500 text-gray-900 px-8 py-4 rounded-full font-bold text-sm sm:text-base shadow-[0_4px_30px_rgba(212,175,55,0.4)] hover:shadow-[0_8px_40px_rgba(212,175,55,0.6)] transition-shadow">
               Start Your Journey
-            </motion.button>
-            <motion.button 
-              onClick={() => {
-                const isLoggedIn = localStorage.getItem('token');
-                if (isLoggedIn) navigate('/profile');
-                else navigate('/login?type=login');
-              }}
-              whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.98 }}
-              className="border-2 border-white/30 text-white px-8 py-4 rounded-full font-semibold text-sm sm:text-base hover:bg-white/10 transition-all backdrop-blur-sm">
-              Log In
             </motion.button>
           </div>
         </motion.div>
 
         {/* Right: Registration Card */}
+        {!isLoggedIn && (
         <motion.div initial={{ opacity: 0, y: 60 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.4 }} className="w-full max-w-md lg:w-[400px]">
           <div className="relative bg-white/10 backdrop-blur-xl rounded-3xl p-7 sm:p-8 border border-white/20 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
             <div className="absolute -top-px left-8 right-8 h-1 bg-gradient-to-r from-transparent via-accent to-transparent rounded-full" />
@@ -297,6 +292,7 @@ export default function Hero() {
             </form>
           </div>
         </motion.div>
+        )}
       </div>
 
       {/* Scroll indicator */}

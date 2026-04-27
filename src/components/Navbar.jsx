@@ -32,6 +32,10 @@ export default function Navbar() {
     { name: 'Contact', path: '/contact' }
   ];
 
+  if (isLoggedIn) {
+    links.splice(2, 0, { name: 'My Profile', path: '/profile' });
+  }
+
   return (
     <nav className={`fixed w-full z-50 transition-all duration-500 ${
       scrolled
@@ -42,12 +46,14 @@ export default function Navbar() {
         <div className="flex justify-between items-center">
           
           {/* Logo */}
-          <Link to="/" className="flex items-center group">
+          <Link to="/" className="relative flex items-center group">
             <img
               src="/Coastal%20Shaadi%201.png"
               alt="Coastal Shaadi"
               className="h-14 lg:h-16 max-w-[240px] w-auto transition-all duration-300"
             />
+            <span className={`absolute bottom-1 left-[32%] text-[9px] tracking-[0.15em] uppercase font-medium whitespace-nowrap hidden sm:block transition-colors duration-300 ${scrolled ? 'text-gray-600' : 'text-white/90'}`}>One Step To Forever</span>
+            <span className={`absolute -bottom-1 left-[32%] text-[8px] tracking-[0.15em] uppercase font-medium whitespace-nowrap sm:hidden transition-colors duration-300 ${scrolled ? 'text-gray-600' : 'text-white/90'}`}>One Step To Forever</span>
           </Link>
 
           {/* Desktop Links */}

@@ -23,7 +23,10 @@ export default function Contact() {
             <div className="absolute top-0 left-0 w-1 h-full bg-accent" />
             <h2 className="text-2xl font-serif font-bold text-primary mb-6">Send us a message</h2>
             
-            <form className="space-y-6">
+            <form className="space-y-6" onSubmit={(e) => {
+              e.preventDefault();
+              window.location.href = "mailto:support@coastalshaadi.com?subject=Contact%20Inquiry";
+            }}>
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
@@ -45,7 +48,7 @@ export default function Contact() {
                 <textarea rows="4" className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all resize-none" placeholder="How can we help you?"></textarea>
               </div>
               
-              <button className="w-full bg-gradient-to-r from-primary to-primary-hover text-white py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 group">
+              <button type="submit" className="w-full bg-gradient-to-r from-primary to-primary-hover text-white py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 group">
                 Send Message
                 <Send className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>

@@ -15,6 +15,18 @@ export default function MemberCard({ member, onUpgradePrompt, onViewProfile }) {
   const isInterested = interestedIds.includes(member.id);
   const isIgnored = ignoredIds.includes(member.id);
 
+  const getDefaultImage = (religion, gender) => {
+    if (gender === 'Female') {
+      if (religion === 'Hindu') return '/images/hindu-female.png';
+      if (religion === 'Christian') return '/images/christian-female.png';
+      return '/images/hindu-female.png'; // default fallback
+    } else {
+      if (religion === 'Hindu') return '/images/hindu-male.png';
+      if (religion === 'Christian') return '/images/christian-male.png';
+      return '/images/hindu-male.png'; // default fallback
+    }
+  };
+
   return (
     <div className={`bg-white rounded-xl shadow-sm border ${member.isBoosted ? 'border-amber-200 ring-1 ring-amber-100' : 'border-gray-100'} p-5 flex flex-col md:flex-row gap-5 relative transition-all duration-300 hover:shadow-md ${isIgnored ? 'opacity-40' : ''}`}>
       {/* Badge */}
@@ -39,12 +51,10 @@ export default function MemberCard({ member, onUpgradePrompt, onViewProfile }) {
         className="w-32 h-32 md:w-36 md:h-36 shrink-0 rounded-lg bg-gray-200 overflow-hidden relative group cursor-pointer"
         onClick={() => { if(isFreePlan) onUpgradePrompt('Clear Photos'); else onViewProfile(); }}
       >
-        {member.image ? (
+        {member.image && !member.image.includes('unsplash') ? (
           <img src={member.image} alt={member.name} className={`w-full h-full object-cover transition-all duration-300 ${isFreePlan ? 'blur-xl scale-110' : ''}`} />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300 text-white">
-            <User className="w-14 h-14" />
-          </div>
+          <img src={getDefaultImage(member.religion, member.gender)} alt={member.name} className={`w-full h-full object-cover transition-all duration-300 ${isFreePlan ? 'blur-xl scale-110' : ''}`} />
         )}
         
         {isFreePlan && (

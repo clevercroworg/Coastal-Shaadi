@@ -569,7 +569,7 @@ export default function MyProfile() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 pt-2">
                 <Field label="Age / DOB" field="dob" icon={<Calendar className="w-3 h-3" />} profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} type="date" max={maxDateString} />
                 <Field label="Height" field="height" icon={<Ruler className="w-3 h-3" />} profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} />
-                <Field label="Marital Status" field="maritalStatus" icon={<Heart className="w-3 h-3" />} profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} />
+                <Field label="Marital Status" field="maritalStatus" type="select" options={['Never Married', 'Divorced', 'Awaiting Divorce', 'Annulled', 'Widowed']} icon={<Heart className="w-3 h-3" />} profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} />
                 <Field label="Profile Created By" field="createdBy" icon={<User className="w-3 h-3" />} profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} />
                 <Field label="State" field="state" type="select" options={indianStates} icon={<Map className="w-3 h-3" />} profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} />
                 <Field label="Diet" field="diet" icon={<Utensils className="w-3 h-3" />} profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} />
@@ -582,7 +582,7 @@ export default function MyProfile() {
               <SectionHeader icon={<Map className="w-4 h-4 text-accent" />} title="Religion & Background" section="religion" editSection={editSection} startEdit={startEdit} cancelEdit={cancelEdit} saveEdit={saveEdit} />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 pt-2">
                 <Field label="Religion" field="religion" icon={<BookOpen className="w-3 h-3" />} profile={profile} isEditing={editSection === 'religion'} editData={editData} handleChange={handleChange} />
-                <Field label="Mother Tongue" field="motherTongue" icon={<Globe className="w-3 h-3" />} profile={profile} isEditing={editSection === 'religion'} editData={editData} handleChange={handleChange} />
+                <Field label="Mother Tongue" field="motherTongue" type="select" options={profile.religion === 'Hindu' ? ['Kannada', 'Tulu', 'English'] : profile.religion === 'Christian' ? ['Konkani', 'English'] : ['Kannada', 'Tulu', 'Konkani', 'English']} icon={<Globe className="w-3 h-3" />} profile={profile} isEditing={editSection === 'religion'} editData={editData} handleChange={handleChange} />
                 <Field label="Caste" field="caste" profile={profile} isEditing={editSection === 'religion'} editData={editData} handleChange={handleChange} />
                 <Field label="Sub-Caste" field="subCaste" profile={profile} isEditing={editSection === 'religion'} editData={editData} handleChange={handleChange} />
                 <Field label="Gothra / Nakshatra" field="gothra" profile={profile} isEditing={editSection === 'religion'} editData={editData} handleChange={handleChange} />

@@ -122,15 +122,25 @@ export default function ActiveMembers() {
   const religions = getUniqueValues('religion');
   // Always show the full list of castes for the selected/logged-in religion, otherwise fallback to dynamic
   const castes = castesList[loggedInReligion] || getUniqueValues('caste');
-  const languages = getUniqueValues('language');
+  
+  const motherTongues = loggedInReligion === 'Hindu' 
+    ? ['Kannada', 'Tulu', 'English'] 
+    : loggedInReligion === 'Christian' 
+      ? ['Konkani', 'English'] 
+      : ['Kannada', 'Tulu', 'Konkani', 'English'];
+
   const countries = getUniqueValues('country');
   const states = getUniqueValues('state');
-  // Always show a comprehensive list of cities in the dropdown
-  const dynamicCities = getUniqueValues('city');
-  const cities = [...new Set([...masterCities, ...dynamicCities])].sort();
-  const maritalStatuses = getUniqueValues('maritalStatus');
+  
+  const southKarnatakaCities = [
+    'Mangalore', 'Udupi', 'Kundapura', 'Manipal', 'Puttur', 'Belthangady', 'Karkala', 
+    'Surathkal', 'Bantwal', 'Dharmasthala', 'Mulki', 'Moodabidri', 'Baindur', 'Brahmavar', 
+    'Saligrama', 'Kaup', 'Sullia', 'Subramanya', 'Ullal', 'Padubidri', 'Malpe'
+  ].sort();
 
-  const SelectFilter = ({ label, name, options, value }) => (
+  const maritalStatuses = ['Never Married', 'Divorced', 'Awaiting Divorce', 'Annulled', 'Widowed'];
+
+  const SelectFilter = ({ label, name, options, value, defaultLabel = 'All' }) => (
     <div>
       <label className="text-xs text-gray-500 mb-1 block font-medium">{label}</label>
       <select
@@ -139,7 +149,7 @@ export default function ActiveMembers() {
         onChange={handleChange}
         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
       >
-        <option value="">All</option>
+        <option value="">{defaultLabel}</option>
         {options.map(opt => (
           <option key={opt} value={opt}>{opt}</option>
         ))}
@@ -184,13 +194,13 @@ export default function ActiveMembers() {
                 </div>
 
                 {/* Marital Status */}
-                <SelectFilter label="Marital Status" name="maritalStatus" options={maritalStatuses} value={filters.maritalStatus} />
+                <SelectFilter label="Marital Status" name="maritalStatus" options={maritalStatuses} value={filters.maritalStatus} defaultLabel="Open to All" />
 
                 {/* Caste */}
                 <SelectFilter label="Caste" name="caste" options={castes} value={filters.caste} />
 
                 {/* Mother Tongue */}
-                <SelectFilter label="Mother Tongue" name="language" options={languages} value={filters.language} />
+                <SelectFilter label="Mother Tongue" name="language" options={motherTongues} value={filters.language} />
 
                 {/* Profession */}
                 <div>
@@ -205,7 +215,7 @@ export default function ActiveMembers() {
                 <SelectFilter label="State" name="state" options={states} value={filters.state} />
 
                 {/* City */}
-                <SelectFilter label="City" name="city" options={cities} value={filters.city} />
+                <SelectFilter label="City" name="city" options={southKarnatakaCities} value={filters.city} />
 
                 {/* Height Range */}
                 <div className="flex gap-3">

@@ -80,7 +80,7 @@ export default function MyProfile() {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
   const { showToast } = useToast();
-  const { masterCities, getUniqueValues, indianStates } = useMembers();
+  const { masterCities, citiesByState, getUniqueValues, indianStates, countries } = useMembers();
   
   // Combine master cities with any unique cities already in the database
   const allCities = [...new Set([...masterCities, ...getUniqueValues('city')])].sort();
@@ -504,28 +504,57 @@ export default function MyProfile() {
                       <input value={editData.phone} onChange={(e) => handleChange('phone', e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30" />
                     </div>
                     <div>
-                      <label className="text-[11px] text-gray-400 uppercase tracking-wider block mb-1">City</label>
-                      <input 
-                        value={editData.city} 
-                        onChange={(e) => handleChange('city', e.target.value)} 
-                        list="city-suggestions"
-                        className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30" 
-                        placeholder="Type to search city..."
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] text-gray-400 uppercase tracking-wider block mb-1">State</label>
+                      <label className="text-[11px] text-gray-400 uppercase tracking-wider block mb-1">Country</label>
                       <select 
-                        value={editData.state} 
-                        onChange={(e) => handleChange('state', e.target.value)} 
+                        value={editData.country || ''} 
+                        onChange={(e) => {
+                          handleChange('country', e.target.value);
+                          if (e.target.value !== 'India') {
+                            handleChange('state', '');
+                            handleChange('city', '');
+                          }
+                        }}
                         className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
                       >
-                        <option value="">Select State</option>
-                        {indianStates.map(state => (
-                          <option key={state} value={state}>{state}</option>
+                        <option value="">Select Country</option>
+                        {countries.map(c => (
+                          <option key={c} value={c}>{c}</option>
                         ))}
                       </select>
                     </div>
+                    {(editData.country === 'India' || !editData.country) && (
+                      <div>
+                        <label className="text-[11px] text-gray-400 uppercase tracking-wider block mb-1">State</label>
+                        <select 
+                          value={editData.state} 
+                          onChange={(e) => {
+                            handleChange('state', e.target.value);
+                            handleChange('city', '');
+                          }}
+                          className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
+                        >
+                          <option value="">Select State</option>
+                          {indianStates.map(state => (
+                            <option key={state} value={state}>{state}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    {(editData.country === 'India' || !editData.country) && (
+                      <div>
+                        <label className="text-[11px] text-gray-400 uppercase tracking-wider block mb-1">City</label>
+                        <select 
+                          value={editData.city || ''} 
+                          onChange={(e) => handleChange('city', e.target.value)}
+                          className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
+                        >
+                          <option value="">Select City</option>
+                          {(editData.state ? (citiesByState[editData.state] || []).sort() : allCities).map(city => (
+                            <option key={city} value={city}>{city}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <>
@@ -577,7 +606,13 @@ export default function MyProfile() {
                 <Field label="Height" field="height" icon={<Ruler className="w-3 h-3" />} profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} />
                 <Field label="Marital Status" field="maritalStatus" type="select" options={['Never Married', 'Divorced', 'Awaiting Divorce', 'Annulled', 'Widowed']} icon={<Heart className="w-3 h-3" />} profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} />
                 <Field label="Profile Created By" field="createdBy" icon={<User className="w-3 h-3" />} profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} />
-                <Field label="State" field="state" type="select" options={indianStates} icon={<Map className="w-3 h-3" />} profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} />
+                <Field label="Country" field="country" type="select" options={countries} icon={<Globe className="w-3 h-3" />} profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} />
+                {((editSection === 'personal' ? (editData.country || profile.country) : profile.country) === 'India' || !(editSection === 'personal' ? (editData.country || profile.country) : profile.country)) && (
+                  <Field label="State" field="state" type="select" options={indianStates} icon={<Map className="w-3 h-3" />} profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} />
+                )}
+                {((editSection === 'personal' ? (editData.country || profile.country) : profile.country) === 'India' || !(editSection === 'personal' ? (editData.country || profile.country) : profile.country)) && (
+                  <Field label="City" field="city" type="select" options={(editSection === 'personal' ? (editData.state || profile.state) : profile.state) ? (citiesByState[editSection === 'personal' ? (editData.state || profile.state) : profile.state] || []).sort() : allCities} icon={<MapPin className="w-3 h-3" />} profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} />
+                )}
                 <Field label="Diet" field="diet" icon={<Utensils className="w-3 h-3" />} profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} />
                 <Field label="Any Disability" field="disability" profile={profile} isEditing={editSection === 'personal'} editData={editData} handleChange={handleChange} />
               </div>

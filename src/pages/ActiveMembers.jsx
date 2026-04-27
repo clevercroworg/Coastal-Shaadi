@@ -7,7 +7,7 @@ import UpgradeModal from '../components/UpgradeModal';
 import FullProfileModal from '../components/FullProfileModal';
 
 export default function ActiveMembers() {
-  const { members, getUniqueValues, masterCities, indianStates } = useMembers();
+  const { members, getUniqueValues, masterCities, citiesByState, indianStates, countries } = useMembers();
 
   const getInitialFilters = () => {
     let religion = '';
@@ -46,8 +46,15 @@ export default function ActiveMembers() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value }));
-    setCurrentPage(1); // Reset page on filter change
+    setFilters(prev => {
+      const updated = { ...prev, [name]: value };
+      // Cascade clear: if country changes, reset state & city
+      if (name === 'country') { updated.state = ''; updated.city = ''; }
+      // If state changes, reset city
+      if (name === 'state') { updated.city = ''; }
+      return updated;
+    });
+    setCurrentPage(1);
   };
 
   const resetFilters = () => {
@@ -128,14 +135,10 @@ export default function ActiveMembers() {
       ? ['Konkani', 'English'] 
       : ['Kannada', 'Tulu', 'Konkani', 'English'];
 
-  const countries = getUniqueValues('country');
   const states = indianStates;
-  
-  const southKarnatakaCities = [
-    'Mangalore', 'Udupi', 'Kundapura', 'Manipal', 'Puttur', 'Belthangady', 'Karkala', 
-    'Surathkal', 'Bantwal', 'Dharmasthala', 'Mulki', 'Moodabidri', 'Baindur', 'Brahmavar', 
-    'Saligrama', 'Kaup', 'Sullia', 'Subramanya', 'Ullal', 'Padubidri', 'Malpe'
-  ].sort();
+
+  // Cities based on selected state, fallback to all cities
+  const cities = filters.state ? (citiesByState[filters.state] || []).sort() : masterCities;
 
   const maritalStatuses = ['Never Married', 'Divorced', 'Awaiting Divorce', 'Annulled', 'Widowed'];
 
@@ -210,11 +213,15 @@ export default function ActiveMembers() {
                 {/* Country */}
                 <SelectFilter label="Country" name="country" options={countries} value={filters.country} />
 
-                {/* State */}
-                <SelectFilter label="State" name="state" options={states} value={filters.state} />
+                {/* State - only show for India */}
+                {(!filters.country || filters.country === 'India') && (
+                  <SelectFilter label="State" name="state" options={states} value={filters.state} />
+                )}
 
-                {/* City */}
-                <SelectFilter label="City" name="city" options={southKarnatakaCities} value={filters.city} />
+                {/* City - only show for India */}
+                {(!filters.country || filters.country === 'India') && (
+                  <SelectFilter label="City" name="city" options={cities} value={filters.city} />
+                )}
 
                 {/* Height Range */}
                 <div className="flex gap-3">

@@ -7,7 +7,7 @@ import UpgradeModal from '../components/UpgradeModal';
 import FullProfileModal from '../components/FullProfileModal';
 
 export default function ActiveMembers() {
-  const { members, getUniqueValues, masterCities } = useMembers();
+  const { members, getUniqueValues, masterCities, indianStates } = useMembers();
 
   const getInitialFilters = () => {
     let religion = '';
@@ -129,7 +129,7 @@ export default function ActiveMembers() {
       : ['Kannada', 'Tulu', 'Konkani', 'English'];
 
   const countries = getUniqueValues('country');
-  const states = getUniqueValues('state');
+  const states = indianStates;
   
   const southKarnatakaCities = [
     'Mangalore', 'Udupi', 'Kundapura', 'Manipal', 'Puttur', 'Belthangady', 'Karkala', 

@@ -588,10 +588,14 @@ export default function MyProfile() {
               <SectionHeader icon={<Map className="w-4 h-4 text-accent" />} title="Religion & Background" section="religion" editSection={editSection} startEdit={startEdit} cancelEdit={cancelEdit} saveEdit={saveEdit} />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 pt-2">
                 <Field label="Religion" field="religion" icon={<BookOpen className="w-3 h-3" />} profile={profile} isEditing={editSection === 'religion'} editData={editData} handleChange={handleChange} />
-                <Field label="Mother Tongue" field="motherTongue" type="select" options={profile.religion === 'Hindu' ? ['Kannada', 'Tulu', 'English'] : profile.religion === 'Christian' ? ['Konkani', 'English'] : ['Kannada', 'Tulu', 'Konkani', 'English']} icon={<Globe className="w-3 h-3" />} profile={profile} isEditing={editSection === 'religion'} editData={editData} handleChange={handleChange} />
+                <Field label="Mother Tongue" field="motherTongue" type="select" options={(editSection === 'religion' ? (editData.religion || profile.religion) : profile.religion) === 'Hindu' ? ['Kannada', 'Tulu', 'English'] : (editSection === 'religion' ? (editData.religion || profile.religion) : profile.religion) === 'Christian' ? ['Konkani', 'English'] : ['Kannada', 'Tulu', 'Konkani', 'English']} icon={<Globe className="w-3 h-3" />} profile={profile} isEditing={editSection === 'religion'} editData={editData} handleChange={handleChange} />
                 <Field label="Caste" field="caste" profile={profile} isEditing={editSection === 'religion'} editData={editData} handleChange={handleChange} />
-                <Field label="Sub-Caste" field="subCaste" profile={profile} isEditing={editSection === 'religion'} editData={editData} handleChange={handleChange} />
-                <Field label="Gothra / Nakshatra" field="gothra" profile={profile} isEditing={editSection === 'religion'} editData={editData} handleChange={handleChange} />
+                {(editSection === 'religion' ? (editData.religion || profile.religion) : profile.religion) !== 'Christian' && (
+                  <>
+                    <Field label="Sub-Caste" field="subCaste" profile={profile} isEditing={editSection === 'religion'} editData={editData} handleChange={handleChange} />
+                    <Field label="Gothra / Nakshatra" field="gothra" profile={profile} isEditing={editSection === 'religion'} editData={editData} handleChange={handleChange} />
+                  </>
+                )}
               </div>
             </div>
 

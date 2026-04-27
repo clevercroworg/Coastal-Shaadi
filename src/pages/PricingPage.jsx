@@ -3,10 +3,8 @@ import Packages from '../components/Packages';
 
 export default function PricingPage() {
   return (
-    <main className="pb-20 pt-24 bg-canvas min-h-screen">
-      <div className="pt-8 bg-canvas">
-        <Packages />
-      </div>
+    <main className="pb-12 pt-20 bg-canvas min-h-screen">
+      <Packages />
     </main>
   );
 }

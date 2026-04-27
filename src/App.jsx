@@ -22,6 +22,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import PendingPage from './pages/PendingPage';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
+import CheckoutPage from './pages/CheckoutPage';
 
 // Context
 import { MemberProvider } from './context/MemberContext';
@@ -64,6 +65,7 @@ const AppContent = () => {
           <Route path="/shortlist" element={<ProtectedRoute><Shortlist /></ProtectedRoute>} />
           <Route path="/messaging" element={<ProtectedRoute><Messaging /></ProtectedRoute>} />
           <Route path="/ignored" element={<ProtectedRoute><Ignored /></ProtectedRoute>} />
+          <Route path="/checkout/:plan" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
         </Routes>
       </div>
       {!isAdminRoute && <Footer />}

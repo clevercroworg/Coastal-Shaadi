@@ -39,13 +39,15 @@ export default function Navbar() {
   // Pages with dark hero backgrounds where transparent navbar works
   const darkHeroPages = ['/', '/about', '/success-stories'];
   const hasDarkHero = darkHeroPages.includes(location.pathname);
-  const isScrolledOrSolid = scrolled || !hasDarkHero;
+  const isScrolledOrSolid = scrolled || !hasDarkHero || mobileMenuOpen;
 
   return (
     <nav className={`fixed w-full z-50 transition-all duration-500 ${
-      isScrolledOrSolid
-        ? 'bg-white/95 backdrop-blur-lg shadow-[0_2px_20px_rgba(128,0,0,0.08)] py-3'
-        : 'bg-gradient-to-b from-black/50 to-transparent py-5'
+      mobileMenuOpen
+        ? 'bg-white shadow-[0_2px_20px_rgba(128,0,0,0.08)] py-3'
+        : isScrolledOrSolid
+          ? 'bg-white/95 backdrop-blur-lg shadow-[0_2px_20px_rgba(128,0,0,0.08)] py-3'
+          : 'bg-gradient-to-b from-black/50 to-transparent py-5'
     }`}>
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <div className="flex justify-between items-center">
@@ -115,7 +117,7 @@ export default function Navbar() {
             exit={{ opacity: 0, height: 0 }}
             className="lg:hidden bg-white shadow-xl border-t border-gray-100 overflow-hidden"
           >
-            <div className="px-6 py-6 space-y-1">
+            <div className="px-6 pt-2 pb-6 space-y-1">
               {links.map((item, i) => (
                 <motion.div
                   key={item.name}

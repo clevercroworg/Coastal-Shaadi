@@ -37,7 +37,7 @@ export default function Navbar() {
   }
 
   // Pages with dark hero backgrounds where transparent navbar works
-  const darkHeroPages = ['/', '/about', '/success-stories'];
+  const darkHeroPages = ['/', '/about'];
   const hasDarkHero = darkHeroPages.includes(location.pathname);
   const isScrolledOrSolid = scrolled || !hasDarkHero || mobileMenuOpen;
 
@@ -64,19 +64,19 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Links */}
-          <div className="hidden lg:flex items-center gap-8">
+          <div className="hidden lg:flex items-center gap-4">
             {links.map((item) => (
               <Link
                 key={item.name}
                 to={item.path}
-                className={`text-sm font-medium relative group transition-colors duration-300 ${
+                className={`text-sm font-semibold px-4 py-2 rounded-full relative group transition-all duration-300 ${
                   location.pathname === item.path
-                    ? (isScrolledOrSolid ? 'text-primary' : 'text-accent')
-                    : (isScrolledOrSolid ? 'text-gray-700 hover:text-primary' : 'text-white/90 hover:text-white')
+                    ? (isScrolledOrSolid ? 'text-primary bg-primary/5' : 'text-accent bg-white/10 backdrop-blur-md')
+                    : (isScrolledOrSolid ? 'text-gray-700 hover:text-primary hover:bg-gray-50' : 'text-white/90 hover:text-white hover:bg-white/5')
                 }`}
               >
                 {item.name}
-                <span className={`absolute -bottom-1 left-0 h-0.5 bg-accent transition-all duration-300 ${location.pathname === item.path ? 'w-full' : 'w-0 group-hover:w-full'}`} />
+                <span className={`absolute bottom-1 left-4 h-0.5 bg-accent transition-all duration-300 ${location.pathname === item.path ? 'w-[calc(100%-32px)]' : 'w-0 group-hover:w-[calc(100%-32px)]'}`} />
               </Link>
             ))}
             

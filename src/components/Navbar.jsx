@@ -37,7 +37,7 @@ export default function Navbar() {
   }
 
   // Pages with dark hero backgrounds where transparent navbar works
-  const darkHeroPages = ['/', '/about'];
+  const darkHeroPages = ['/'];
   const hasDarkHero = darkHeroPages.includes(location.pathname);
   const isScrolledOrSolid = scrolled || !hasDarkHero || mobileMenuOpen;
 

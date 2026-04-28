@@ -93,6 +93,35 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// ========== GET CURRENT USER (for polling approval status) ==========
+app.get('/api/me', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select('-password');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json({
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      gender: user.gender,
+      religion: user.religion,
+      caste: user.caste,
+      memberId: user.memberId,
+      profileData: user.profileData,
+      image: user.image,
+      role: user.role,
+      status: user.status,
+      memberType: user.memberType,
+      planExpiry: user.planExpiry,
+      whatsappNumber: user.whatsappNumber,
+      whatsappConsent: user.whatsappConsent
+    });
+  } catch (err) {
+    console.error('GET /api/me ERROR:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 app.post('/api/contact', async (req, res) => {
   try {
     const { firstName, lastName, email, message } = req.body;

@@ -17,7 +17,7 @@ const plans = [
       "View blurred contact details"
     ],
     highlight: false,
-    cta: "Current Plan"
+    cta: "Get Started Free"
   },
   {
     name: "Basic",
@@ -73,31 +73,65 @@ export default function Packages() {
   const navigate = useNavigate();
 
   // Get current user plan
+  const token = localStorage.getItem('token');
   const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
   const currentPlan = userProfile.memberType || 'Free';
+  const isLoggedIn = !!token && !!(userProfile.id || userProfile._id);
   const isApproved = userProfile.status === 'approved';
 
   const planRank = { Free: 0, Basic: 1, Premium: 2, Elite: 3 };
 
   const handleSelectPlan = (plan) => {
-    if (plan.name === currentPlan) return;
-    if (plan.name === 'Free') return;
-    if (planRank[plan.name] <= planRank[currentPlan]) return; // block downgrades
+    // --- GUEST (not logged in) ---
+    if (!isLoggedIn) {
+      // Save the selected plan so it carries through registration → approval → checkout
+      localStorage.setItem('pendingPlan', plan.name.toLowerCase());
+      navigate('/login?type=register');
+      return;
+    }
+
+    // --- LOGGED IN but not yet approved ---
     if (!isApproved) {
       alert('Your profile needs to be approved before you can purchase a plan. Please wait for admin approval.');
       return;
     }
+
+    // --- LOGGED IN & APPROVED ---
+    if (plan.name === 'Free') return; // Already on Free or higher
+    if (plan.name === currentPlan) return;
+    if (planRank[plan.name] <= planRank[currentPlan]) return; // block downgrades
+
     navigate(`/checkout/${plan.name.toLowerCase()}`);
   };
 
   const getButtonText = (plan) => {
+    if (!isLoggedIn) {
+      // Guest user — all buttons say action text
+      if (plan.name === 'Free') return 'Register Free';
+      return plan.cta;
+    }
     if (plan.name === currentPlan) return '✓ Current Plan';
     if (plan.name === 'Free') return 'Free Forever';
     if (planRank[plan.name] < planRank[currentPlan]) return 'Included in Your Plan';
     return plan.cta;
   };
 
+  const getButtonDisabled = (plan) => {
+    if (!isLoggedIn) return false; // Guests can click any plan
+    if (plan.name === currentPlan) return true;
+    if (plan.name === 'Free' && isLoggedIn) return true;
+    if (planRank[plan.name] < planRank[currentPlan]) return true;
+    return false;
+  };
+
   const getButtonStyle = (plan) => {
+    if (!isLoggedIn) {
+      // Guest — all clickable
+      if (plan.highlight) {
+        return 'bg-gradient-to-r from-accent to-yellow-500 text-gray-900 shadow-[0_4px_20px_rgba(212,175,55,0.4)] hover:shadow-[0_8px_30px_rgba(212,175,55,0.5)]';
+      }
+      return 'bg-gray-100 text-gray-800 hover:bg-primary hover:text-white';
+    }
     if (plan.name === currentPlan) {
       return 'bg-green-100 text-green-700 cursor-default border border-green-200';
     }
@@ -148,7 +182,7 @@ export default function Packages() {
                 className={`relative rounded-3xl p-7 border-2 transition-all duration-500 ${
                   plan.highlight
                     ? 'bg-primary text-white border-primary shadow-[0_20px_60px_rgba(128,0,0,0.25)] lg:-translate-y-4 z-10'
-                    : plan.name === currentPlan
+                    : (isLoggedIn && plan.name === currentPlan)
                     ? 'bg-white text-gray-900 border-green-300 shadow-md ring-2 ring-green-200'
                     : 'bg-white text-gray-900 border-gray-100 shadow-sm hover:border-accent/30 hover:shadow-premium'
                 }`}
@@ -161,7 +195,7 @@ export default function Packages() {
                 )}
 
                 {/* Current plan badge */}
-                {plan.name === currentPlan && !plan.highlight && (
+                {isLoggedIn && plan.name === currentPlan && !plan.highlight && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-500 text-white text-[10px] font-bold uppercase tracking-wider py-1 px-4 rounded-full shadow">
                     Your Plan
                   </div>
@@ -199,10 +233,10 @@ export default function Packages() {
 
                 {/* CTA */}
                 <motion.button
-                  whileHover={plan.name !== currentPlan ? { scale: 1.03 } : {}}
-                  whileTap={plan.name !== currentPlan ? { scale: 0.97 } : {}}
+                  whileHover={!getButtonDisabled(plan) ? { scale: 1.03 } : {}}
+                  whileTap={!getButtonDisabled(plan) ? { scale: 0.97 } : {}}
                   onClick={() => handleSelectPlan(plan)}
-                  disabled={plan.name === currentPlan || plan.name === 'Free'}
+                  disabled={getButtonDisabled(plan)}
                   className={`w-full py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed ${getButtonStyle(plan)}`}
                 >
                   {getButtonText(plan)}

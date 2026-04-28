@@ -129,6 +129,8 @@ export default function CheckoutPage() {
         // Update local storage so the UI reflects the new membership immediately
         const updatedProfile = { ...userProfile, memberType: data.user.memberType, planExpiry: data.user.planExpiry };
         localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
+        // Clear pendingPlan since purchase is complete
+        localStorage.removeItem('pendingPlan');
         window.dispatchEvent(new Event('profileUpdated'));
 
         if (mountedRef.current) setSuccess(true);

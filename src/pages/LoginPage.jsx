@@ -97,10 +97,20 @@ export default function LoginPage() {
         localStorage.setItem('userFilter', JSON.stringify({ religion, caste }));
         localStorage.setItem('userProfile', JSON.stringify(data.user));
         
+        // After registration, always go to pending (pendingPlan stays in localStorage)
         if (data.user.status === 'pending' || data.user.status === 'rejected') {
           navigate('/pending');
         } else {
-          navigate('/active-members');
+          // Rare: if auto-approved, route based on pendingPlan
+          const pendingPlan = localStorage.getItem('pendingPlan');
+          if (pendingPlan && pendingPlan !== 'free') {
+            navigate(`/checkout/${pendingPlan}`);
+          } else if (pendingPlan === 'free') {
+            localStorage.removeItem('pendingPlan');
+            navigate('/profile');
+          } else {
+            navigate('/pricing');
+          }
         }
       } else {
         const res = await fetch('/api/login', {
@@ -136,7 +146,16 @@ export default function LoginPage() {
         if (data.user.status === 'pending' || data.user.status === 'rejected') {
           navigate('/pending');
         } else {
-          navigate('/active-members');
+          // Approved user — check if there's a pending plan from pricing page
+          const pendingPlan = localStorage.getItem('pendingPlan');
+          if (pendingPlan && pendingPlan !== 'free') {
+            navigate(`/checkout/${pendingPlan}`);
+          } else if (pendingPlan === 'free') {
+            localStorage.removeItem('pendingPlan');
+            navigate('/profile');
+          } else {
+            navigate('/active-members');
+          }
         }
       }
     } catch (err) {

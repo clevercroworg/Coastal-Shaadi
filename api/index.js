@@ -7,6 +7,7 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import Razorpay from 'razorpay';
 import User from './models/User.js';
 import Conversation from './models/Conversation.js';
 import Message from './models/Message.js';
@@ -45,6 +46,14 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET;
 const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY;
 const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
+
+// Initialize Razorpay instance
+const razorpayInstance = new Razorpay({
+  key_id: RAZORPAY_KEY_ID,
+  key_secret: RAZORPAY_KEY_SECRET
+});
 
 // Debug: log which env vars are present (not values, just true/false)
 console.log('ENV CHECK:', {
@@ -52,7 +61,9 @@ console.log('ENV CHECK:', {
   JWT_SECRET: !!JWT_SECRET,
   CLOUDINARY_API_SECRET: !!CLOUDINARY_API_SECRET,
   CLOUDINARY_API_KEY: !!CLOUDINARY_API_KEY,
-  CLOUDINARY_CLOUD_NAME: !!CLOUDINARY_CLOUD_NAME
+  CLOUDINARY_CLOUD_NAME: !!CLOUDINARY_CLOUD_NAME,
+  RAZORPAY_KEY_ID: !!RAZORPAY_KEY_ID,
+  RAZORPAY_KEY_SECRET: !!RAZORPAY_KEY_SECRET
 });
 
 // Serverless-friendly MongoDB Connection Middleware
@@ -293,6 +304,120 @@ app.post('/api/upgrade', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error during upgrade' });
+  }
+});
+
+// ========== RAZORPAY PAYMENT API ==========
+
+// Plan pricing config (amount in paise = INR × 100)
+const razorpayPlanConfig = {
+  basic:   { name: 'Basic',   price: 1999, gst: Math.round(1999 * 0.18), duration: '3 Months',  months: 3 },
+  premium: { name: 'Premium', price: 3499, gst: Math.round(3499 * 0.18), duration: '6 Months',  months: 6 },
+  elite:   { name: 'Elite',   price: 5999, gst: Math.round(5999 * 0.18), duration: '12 Months', months: 12 }
+};
+
+// Create Razorpay Order
+app.post('/api/razorpay/create-order', async (req, res) => {
+  try {
+    const { userId, plan } = req.body;
+    if (!userId || !plan) return res.status(400).json({ message: 'User ID and plan are required' });
+
+    const planConfig = razorpayPlanConfig[plan.toLowerCase()];
+    if (!planConfig) return res.status(400).json({ message: 'Invalid plan selected' });
+
+    // Find user for validation
+    let user;
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      user = await User.findById(userId);
+    } else {
+      user = await User.findOne({ memberId: userId });
+    }
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (user.status !== 'approved') return res.status(403).json({ message: 'Account not approved yet' });
+
+    const totalAmount = (planConfig.price + planConfig.gst) * 100; // Convert to paise
+
+    const order = await razorpayInstance.orders.create({
+      amount: totalAmount,
+      currency: 'INR',
+      receipt: `cs_${user.memberId}_${Date.now()}`,
+      notes: {
+        userId: user._id.toString(),
+        plan: planConfig.name,
+        memberId: user.memberId
+      }
+    });
+
+    res.json({
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      keyId: RAZORPAY_KEY_ID,
+      planName: planConfig.name,
+      planDuration: planConfig.duration
+    });
+  } catch (err) {
+    console.error('RAZORPAY CREATE ORDER ERROR:', err);
+    res.status(500).json({ message: 'Failed to create payment order. Please try again.' });
+  }
+});
+
+// Verify Razorpay Payment & Upgrade Plan
+app.post('/api/razorpay/verify-payment', async (req, res) => {
+  try {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, userId, plan } = req.body;
+
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ message: 'Payment verification data is incomplete' });
+    }
+
+    // Verify signature using HMAC SHA256
+    const expectedSignature = crypto
+      .createHmac('sha256', RAZORPAY_KEY_SECRET)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest('hex');
+
+    if (expectedSignature !== razorpay_signature) {
+      console.error('RAZORPAY SIGNATURE MISMATCH:', { expected: expectedSignature, received: razorpay_signature });
+      return res.status(400).json({ message: 'Payment verification failed. Invalid signature.' });
+    }
+
+    // Signature valid → upgrade user plan
+    const planConfig = razorpayPlanConfig[plan.toLowerCase()];
+    if (!planConfig) return res.status(400).json({ message: 'Invalid plan' });
+
+    let user;
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      user = await User.findById(userId);
+    } else {
+      user = await User.findOne({ memberId: userId });
+    }
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const planExpiry = new Date();
+    if (planConfig.months === 12) {
+      planExpiry.setFullYear(planExpiry.getFullYear() + 1);
+    } else {
+      planExpiry.setMonth(planExpiry.getMonth() + planConfig.months);
+    }
+
+    const updatedUser = await User.findOneAndUpdate(
+      { _id: user._id },
+      {
+        memberType: planConfig.name,
+        planExpiry,
+        razorpayPaymentId: razorpay_payment_id,
+        razorpayOrderId: razorpay_order_id
+      },
+      { new: true }
+    ).select('-password');
+
+    console.log(`✅ PAYMENT SUCCESS: ${user.memberId} upgraded to ${planConfig.name} (Payment: ${razorpay_payment_id})`);
+
+    res.json({ message: 'Payment verified and plan upgraded successfully', user: updatedUser });
+  } catch (err) {
+    console.error('RAZORPAY VERIFY ERROR:', err);
+    res.status(500).json({ message: 'Payment verification failed. Please contact support.' });
   }
 });
 

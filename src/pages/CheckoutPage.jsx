@@ -106,41 +106,113 @@ export default function CheckoutPage() {
   const handlePayment = async () => {
     setLoading(true);
     setError('');
-    // Simulate payment processing UI delay
-    setTimeout(async () => {
-      if (!mountedRef.current) return;
-      try {
-        const userId = userProfile.id || userProfile._id || userProfile.memberId;
-        if (!userId) throw new Error('User ID not found');
 
-        const res = await fetch('/api/upgrade', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, plan: plan })
-        });
-        
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({ message: 'Unknown error' }));
-          throw new Error(errData.message || 'Failed to upgrade plan');
-        }
-        
-        const data = await res.json();
-        
-        // Update local storage so the UI reflects the new membership immediately
-        const updatedProfile = { ...userProfile, memberType: data.user.memberType, planExpiry: data.user.planExpiry };
-        localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
-        // Clear pendingPlan since purchase is complete
-        localStorage.removeItem('pendingPlan');
-        window.dispatchEvent(new Event('profileUpdated'));
+    try {
+      const userId = userProfile.id || userProfile._id || userProfile.memberId;
+      if (!userId) throw new Error('User ID not found');
 
-        if (mountedRef.current) setSuccess(true);
-      } catch (err) {
-        console.error('Upgrade error:', err);
-        if (mountedRef.current) setError(err.message || 'Something went wrong. Please try again or contact support.');
-      } finally {
-        if (mountedRef.current) setLoading(false);
+      // Step 1: Create Razorpay order on the server
+      const orderRes = await fetch('/api/razorpay/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, plan })
+      });
+
+      if (!orderRes.ok) {
+        const errData = await orderRes.json().catch(() => ({ message: 'Unknown error' }));
+        throw new Error(errData.message || 'Failed to create order');
       }
-    }, 2000);
+
+      const orderData = await orderRes.json();
+
+      // Step 2: Open Razorpay Checkout popup
+      const options = {
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'Coastal Shaadi',
+        description: `${orderData.planName} Plan – ${orderData.planDuration}`,
+        order_id: orderData.orderId,
+        prefill: {
+          name: `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim(),
+          email: userProfile.email || '',
+          contact: userProfile.phone || userProfile.profileData?.phone || ''
+        },
+        theme: {
+          color: selectedPlan.color === 'amber' ? '#d97706' :
+                 selectedPlan.color === 'purple' ? '#9333ea' : '#2563eb'
+        },
+        modal: {
+          ondismiss: () => {
+            if (mountedRef.current) {
+              setLoading(false);
+              setError('Payment was cancelled. You can try again anytime.');
+            }
+          }
+        },
+        handler: async (response) => {
+          // Step 3: Verify payment on server
+          try {
+            const verifyRes = await fetch('/api/razorpay/verify-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                userId,
+                plan
+              })
+            });
+
+            if (!verifyRes.ok) {
+              const errData = await verifyRes.json().catch(() => ({ message: 'Verification failed' }));
+              throw new Error(errData.message || 'Payment verification failed');
+            }
+
+            const data = await verifyRes.json();
+
+            // Update local storage so the UI reflects the new membership immediately
+            const updatedProfile = {
+              ...userProfile,
+              memberType: data.user.memberType,
+              planExpiry: data.user.planExpiry
+            };
+            localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
+            // Clear pendingPlan since purchase is complete
+            localStorage.removeItem('pendingPlan');
+            window.dispatchEvent(new Event('profileUpdated'));
+
+            if (mountedRef.current) setSuccess(true);
+          } catch (verifyErr) {
+            console.error('Payment verification error:', verifyErr);
+            if (mountedRef.current) {
+              setError(verifyErr.message || 'Payment was received but verification failed. Please contact support.');
+            }
+          } finally {
+            if (mountedRef.current) setLoading(false);
+          }
+        }
+      };
+
+      const razorpay = new window.Razorpay(options);
+
+      razorpay.on('payment.failed', (response) => {
+        console.error('Razorpay payment failed:', response.error);
+        if (mountedRef.current) {
+          setLoading(false);
+          setError(response.error?.description || 'Payment failed. Please try again or use a different payment method.');
+        }
+      });
+
+      razorpay.open();
+    } catch (err) {
+      console.error('Payment error:', err);
+      if (mountedRef.current) {
+        setError(err.message || 'Something went wrong. Please try again or contact support.');
+        setLoading(false);
+      }
+    }
   };
 
   if (success) {
@@ -159,9 +231,9 @@ export default function CheckoutPage() {
           >
             <Check className="w-10 h-10 text-green-600" />
           </motion.div>
-          <h2 className="text-2xl font-serif font-bold text-gray-900 mb-2">Request Submitted!</h2>
-          <p className="text-gray-600 mb-2">Your <strong>{selectedPlan.name} Plan</strong> upgrade request has been received.</p>
-          <p className="text-sm text-gray-500 mb-8">Our team will contact you within 24 hours to complete the payment and activate your plan.</p>
+          <h2 className="text-2xl font-serif font-bold text-gray-900 mb-2">Payment Successful!</h2>
+          <p className="text-gray-600 mb-2">Your <strong>{selectedPlan.name} Plan</strong> has been activated.</p>
+          <p className="text-sm text-gray-500 mb-8">Enjoy all your premium features right away. Your plan is valid for {selectedPlan.duration}.</p>
           
           <div className="bg-gray-50 rounded-xl p-4 mb-6 text-left">
             <div className="flex justify-between text-sm mb-2">

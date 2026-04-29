@@ -57,7 +57,7 @@ export default function Navbar() {
             <img
               src="/Coastal%20Shaadi%201.png"
               alt="Coastal Shaadi"
-              className="h-12 lg:h-16 max-w-[200px] lg:max-w-[240px] w-auto transition-all duration-300"
+              className="h-12 lg:h-16 w-auto object-contain transition-all duration-300"
             />
             <span className={`absolute bottom-0 left-[32%] text-[9px] tracking-[0.15em] uppercase font-medium whitespace-nowrap hidden sm:block transition-colors duration-300 ${isScrolledOrSolid ? 'text-gray-600' : 'text-white/90'}`}>One Step To Forever</span>
             <span className={`absolute -bottom-0.5 left-[32%] text-[8px] tracking-[0.15em] uppercase font-medium whitespace-nowrap sm:hidden transition-colors duration-300 ${isScrolledOrSolid ? 'text-gray-600' : 'text-white/90'}`}>One Step To Forever</span>

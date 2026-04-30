@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, XCircle, Search, User as UserIcon, LogOut, ShieldCheck, Crown } from 'lucide-react';
+import { CheckCircle, XCircle, Search, User as UserIcon, LogOut, ShieldCheck, Crown, Trash2 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 
 export default function AdminDashboard() {
@@ -56,6 +56,25 @@ export default function AdminDashboard() {
       showToast(`User status updated to ${newStatus}`, 'success');
     } catch (err) {
       showToast('Failed to update user status. Please try again.', 'error');
+    }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm('Are you sure you want to delete this user? This action cannot be undone and will remove all associated data (messages, connections).')) {
+      return;
+    }
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to delete user');
+      
+      setUsers(users.filter(u => u._id !== userId));
+      showToast('User deleted successfully', 'success');
+    } catch (err) {
+      showToast('Failed to delete user. Please try again.', 'error');
     }
   };
 
@@ -227,6 +246,13 @@ export default function AdminDashboard() {
                               <XCircle size={18} />
                             </button>
                           )}
+                          <button 
+                            onClick={() => handleDeleteUser(user._id)}
+                            className="p-1.5 bg-gray-50 text-gray-500 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors"
+                            title="Delete User"
+                          >
+                            <Trash2 size={18} />
+                          </button>
                         </div>
                       </td>
                     </motion.tr>

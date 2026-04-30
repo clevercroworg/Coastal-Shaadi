@@ -174,7 +174,10 @@ app.post('/api/register', async (req, res) => {
     user = new User({
       firstName, lastName, email, phone, password: hashedPassword,
       gender, dob, onBehalf, religion, caste, memberId,
-      memberType: 'Free'
+      memberType: 'Free',
+      planExpiry: null,
+      razorpayPaymentId: null,
+      razorpayOrderId: null
     });
 
     await user.save();
@@ -541,6 +544,25 @@ app.put('/api/admin/users/:id/plan', authMiddleware, adminMiddleware, async (req
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Admin: Delete a user safely
+app.delete('/api/admin/users/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    
+    // Safely cleanup associated data
+    await Connection.deleteMany({ $or: [{ senderId: user._id }, { receiverId: user._id }] });
+    // Also delete user from conversations by removing the conversation entirely if it's 1-on-1
+    await Conversation.deleteMany({ participants: user._id });
+    await Message.deleteMany({ senderId: user._id });
+
+    res.json({ message: 'User deleted successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error during deletion' });
   }
 });
 

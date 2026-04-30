@@ -1,7 +1,7 @@
-import { motion, useInView } from 'framer-motion';
-import { useRef } from 'react';
+import { motion, useInView, AnimatePresence } from 'framer-motion';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, Crown, Sparkles, Zap, Star } from 'lucide-react';
+import { Check, Crown, Sparkles, Zap, Star, Clock } from 'lucide-react';
 import { OrnamentDivider, MandalaPattern, FlowerBouquet, FlowerCorner } from './Decorative';
 
 const plans = [
@@ -71,6 +71,7 @@ export default function Packages() {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: '-100px' });
   const navigate = useNavigate();
+  const [showApprovalPopup, setShowApprovalPopup] = useState(false);
 
   // Get current user plan
   const token = localStorage.getItem('token');
@@ -92,7 +93,7 @@ export default function Packages() {
 
     // --- LOGGED IN but not yet approved ---
     if (!isApproved) {
-      alert('Your profile needs to be approved before you can purchase a plan. Please wait for admin approval.');
+      setShowApprovalPopup(true);
       return;
     }
 
@@ -245,6 +246,36 @@ export default function Packages() {
             ))}
           </div>
         </div>
+
+        {/* Approval Pending Popup */}
+        <AnimatePresence>
+          {showApprovalPopup && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl relative text-center border-2 border-amber-100"
+              >
+                <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+                  <Clock className="w-8 h-8" />
+                </div>
+                <h3 className="text-2xl font-serif font-bold text-gray-900 mb-3">
+                  Approval Pending
+                </h3>
+                <p className="text-gray-600 mb-8 text-sm leading-relaxed">
+                  Your profile is currently under review by our admin team. You can upgrade to a premium plan once your profile is approved.
+                </p>
+                <button
+                  onClick={() => setShowApprovalPopup(false)}
+                  className="bg-primary text-white w-full py-3.5 rounded-xl font-bold shadow-lg hover:shadow-xl hover:bg-primary-hover transition-all"
+                >
+                  Understood
+                </button>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </section>
   );
 }

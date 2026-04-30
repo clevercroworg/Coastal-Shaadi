@@ -482,6 +482,20 @@ app.get('/api/cloudinary-signature', (req, res) => {
   res.json({ timestamp, signature, apiKey: CLOUDINARY_API_KEY, cloudName: CLOUDINARY_CLOUD_NAME });
 });
 
+app.get('/api/showcase-profiles', async (req, res) => {
+  try {
+    const users = await User.find({ role: 'user', status: 'approved' })
+      .sort({ createdAt: -1 })
+      .limit(3)
+      .select('firstName memberId gender religion caste profileData image')
+      .lean();
+    res.json(users);
+  } catch (err) {
+    console.error('SHOWCASE PROFILES ERROR:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 app.get('/api/members', async (req, res) => {
   try {
     // Auto-downgrade any globally expired plans before fetching

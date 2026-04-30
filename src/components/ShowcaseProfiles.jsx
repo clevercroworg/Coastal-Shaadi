@@ -69,7 +69,7 @@ export default function ShowcaseProfiles() {
             transition={{ delay: 0.2 }}
             className="text-gray-600 max-w-2xl mx-auto text-lg"
           >
-            Join thousands of verified members from the coastal region already looking for their perfect match.
+            Join thousands of verified members already looking for their perfect match. Your soulmate could be just a click away.
           </motion.p>
         </div>
 
@@ -143,7 +143,7 @@ export default function ShowcaseProfiles() {
 
                   <div className="flex items-center justify-center gap-1.5 text-gray-500 text-sm mt-4">
                     <MapPin size={16} className="text-primary" />
-                    <span>{profile.profileData?.city || 'Coastal Region'}, {profile.profileData?.state || 'India'}</span>
+                    <span>{profile.profileData?.city || 'India'}, {profile.profileData?.state || 'Karnataka'}</span>
                   </div>
 
                   {/* Call to Action */}

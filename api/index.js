@@ -14,6 +14,17 @@ import Message from './models/Message.js';
 import Connection from './models/Connection.js';
 import { sendPendingEmail, sendApprovalEmail, sendRejectionEmail, sendAdminNotificationEmail, sendOtpEmail, sendContactEmail } from './utils/email.js';
 
+// Utility to enforce plan expiry
+const enforcePlanExpiry = async (user) => {
+  if (user && user.memberType !== 'Free' && user.planExpiry && new Date(user.planExpiry) < new Date()) {
+    user.memberType = 'Free';
+    user.planExpiry = undefined;
+    if (user.save) await user.save();
+    else await User.updateOne({ _id: user._id || user.id }, { $set: { memberType: 'Free' }, $unset: { planExpiry: '' } });
+  }
+  return user;
+};
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -107,8 +118,9 @@ app.get('/api/health', (req, res) => {
 // ========== GET CURRENT USER (for polling approval status) ==========
 app.get('/api/me', authMiddleware, async (req, res) => {
   try {
-    const user = await User.findById(req.userId).select('-password');
+    let user = await User.findById(req.userId).select('-password');
     if (!user) return res.status(404).json({ message: 'User not found' });
+    user = await enforcePlanExpiry(user);
     res.json({
       id: user.id,
       firstName: user.firstName,
@@ -215,6 +227,8 @@ app.post('/api/login', async (req, res) => {
     if (!isMatch) {
       return res.status(400).json({ message: 'Incorrect password. Please try again.' });
     }
+
+    user = await enforcePlanExpiry(user);
 
     const payload = { user: { id: user.id } };
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
@@ -460,6 +474,12 @@ app.get('/api/cloudinary-signature', (req, res) => {
 
 app.get('/api/members', async (req, res) => {
   try {
+    // Auto-downgrade any globally expired plans before fetching
+    await User.updateMany(
+      { planExpiry: { $lt: new Date() }, memberType: { $ne: 'Free' } },
+      { $set: { memberType: 'Free' }, $unset: { planExpiry: '' } }
+    );
+
     const users = await User.find({ role: 'user', status: 'approved' }).select('-password').lean();
 
     // Boost regions for Elite plan

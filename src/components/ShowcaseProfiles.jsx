@@ -150,7 +150,7 @@ export default function ShowcaseProfiles() {
                   <div className="mt-6 pt-6 border-t border-gray-100">
                     <Link 
                       to="/login?type=register"
-                      className="flex items-center justify-center gap-2 w-full py-3.5 bg-gray-900 text-white rounded-xl font-bold hover:bg-primary transition-colors shadow-md hover:shadow-lg"
+                      className="flex items-center justify-center gap-2 w-full py-3.5 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors shadow-md hover:shadow-lg"
                     >
                       <span>Register to Connect</span>
                       <Heart size={18} />

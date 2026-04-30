@@ -134,3 +134,56 @@ export const sendContactEmail = async (firstName, lastName, userEmail, userMessa
   `;
   await sendEmail(process.env.SMTP_USER, subject, html); // Sends to support email
 };
+
+export const sendPaymentSuccessUserEmail = async (email, firstName, planName, amount, paymentId) => {
+  const subject = `Payment Successful - Welcome to ${planName} Plan!`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
+      <h2 style="color: #22c55e; text-align: center;">Payment Successful! 🎉</h2>
+      <p>Hi ${firstName},</p>
+      <p>Thank you for upgrading your membership. Your payment was successfully processed, and your account has been upgraded to the <strong>${planName}</strong> plan.</p>
+      <hr style="border: 0; border-top: 1px solid #eaeaea; margin: 20px 0;" />
+      <h3 style="color: #374151;">Transaction Details:</h3>
+      <ul style="list-style-type: none; padding: 0;">
+        <li style="margin-bottom: 10px;"><strong>Plan:</strong> ${planName}</li>
+        <li style="margin-bottom: 10px;"><strong>Amount Paid:</strong> ₹${amount}</li>
+        <li style="margin-bottom: 10px;"><strong>Transaction ID:</strong> <span style="font-family: monospace; background-color: #f3f4f6; padding: 2px 6px; border-radius: 4px;">${paymentId}</span></li>
+      </ul>
+      <hr style="border: 0; border-top: 1px solid #eaeaea; margin: 20px 0;" />
+      <p>You can now enjoy all the premium features included in your plan.</p>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="https://coastalshaadi.com/active-members" style="background-color: #d946ef; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Go to Dashboard</a>
+      </div>
+      <p>Best Regards,</p>
+      <p><strong>The Coastal Shaadi Team</strong></p>
+    </div>
+  `;
+  await sendEmail(email, subject, html);
+};
+
+export const sendPaymentSuccessAdminEmail = async (user, planName, amount, paymentId) => {
+  const subject = `New Payment Received: ${planName} Plan`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
+      <h2 style="color: #d946ef; text-align: center;">New Payment Received 💰</h2>
+      <p>A user has successfully upgraded their membership.</p>
+      <hr style="border: 0; border-top: 1px solid #eaeaea; margin: 20px 0;" />
+      <h3 style="color: #374151;">User Details:</h3>
+      <ul style="list-style-type: none; padding: 0;">
+        <li style="margin-bottom: 10px;"><strong>Name:</strong> ${user.firstName} ${user.lastName}</li>
+        <li style="margin-bottom: 10px;"><strong>Email:</strong> ${user.email}</li>
+        <li style="margin-bottom: 10px;"><strong>Member ID:</strong> ${user.memberId}</li>
+      </ul>
+      <h3 style="color: #374151;">Transaction Details:</h3>
+      <ul style="list-style-type: none; padding: 0;">
+        <li style="margin-bottom: 10px;"><strong>Plan:</strong> ${planName}</li>
+        <li style="margin-bottom: 10px;"><strong>Amount Paid:</strong> ₹${amount}</li>
+        <li style="margin-bottom: 10px;"><strong>Transaction ID:</strong> <span style="font-family: monospace; background-color: #f3f4f6; padding: 2px 6px; border-radius: 4px;">${paymentId}</span></li>
+      </ul>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="https://coastalshaadi.com/admin" style="background-color: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">View in Admin Panel</a>
+      </div>
+    </div>
+  `;
+  await sendEmail(process.env.SMTP_USER, subject, html); // Sends to support email
+};

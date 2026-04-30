@@ -12,7 +12,7 @@ import User from './models/User.js';
 import Conversation from './models/Conversation.js';
 import Message from './models/Message.js';
 import Connection from './models/Connection.js';
-import { sendPendingEmail, sendApprovalEmail, sendRejectionEmail, sendAdminNotificationEmail, sendOtpEmail, sendContactEmail } from './utils/email.js';
+import { sendPendingEmail, sendApprovalEmail, sendRejectionEmail, sendAdminNotificationEmail, sendOtpEmail, sendContactEmail, sendPaymentSuccessUserEmail, sendPaymentSuccessAdminEmail } from './utils/email.js';
 
 // Utility to enforce plan expiry
 const enforcePlanExpiry = async (user) => {
@@ -430,6 +430,16 @@ app.post('/api/razorpay/verify-payment', async (req, res) => {
     ).select('-password');
 
     console.log(`✅ PAYMENT SUCCESS: ${user.memberId} upgraded to ${planConfig.name} (Payment: ${razorpay_payment_id})`);
+
+    // Send emails asynchronously
+    try {
+      await Promise.all([
+        sendPaymentSuccessUserEmail(user.email, user.firstName, planConfig.name, planConfig.amount, razorpay_payment_id),
+        sendPaymentSuccessAdminEmail(user, planConfig.name, planConfig.amount, razorpay_payment_id)
+      ]);
+    } catch (emailErr) {
+      console.error('Failed to send payment success emails:', emailErr);
+    }
 
     res.json({ message: 'Payment verified and plan upgraded successfully', user: updatedUser });
   } catch (err) {

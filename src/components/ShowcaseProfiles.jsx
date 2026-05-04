@@ -34,6 +34,15 @@ export default function ShowcaseProfiles() {
     { _id: '3', firstName: 'Sneha', memberId: 'CS-102934', religion: 'Christian', caste: 'Catholic', profileData: { age: 25, city: 'Manipal', state: 'Karnataka' }, image: '/images/showcase_w2.png' }
   ];
 
+  let userData = null;
+  try {
+    const stored = localStorage.getItem('userProfile');
+    if (stored) userData = JSON.parse(stored);
+  } catch (e) {}
+  
+  const isLoggedIn = !!userData;
+  const isPremiumOrElite = userData?.memberType === 'Premium' || userData?.memberType === 'Elite';
+
   if (loading) return null;
 
   return (
@@ -93,10 +102,10 @@ export default function ShowcaseProfiles() {
                     <img 
                       src={profile.image} 
                       alt="Member Profile" 
-                      className="w-full h-full object-cover filter blur-[20px] scale-125 opacity-90 transition-transform duration-700 group-hover:scale-110"
+                      className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${!isPremiumOrElite ? 'filter blur-[20px] scale-125 opacity-90' : ''}`}
                     />
                   ) : (
-                    <div className="w-full h-full bg-gray-200 flex items-center justify-center filter blur-[10px]">
+                    <div className={`w-full h-full bg-gray-200 flex items-center justify-center ${!isPremiumOrElite ? 'filter blur-[10px]' : ''}`}>
                       <Heart className="text-gray-400 w-16 h-16" />
                     </div>
                   )}
@@ -105,12 +114,14 @@ export default function ShowcaseProfiles() {
                   <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white via-white/70 to-transparent z-10" />
                   
                   {/* Lock Overlay */}
-                  <div className="absolute inset-0 bg-black/10 flex flex-col items-center justify-center backdrop-blur-[2px] z-10">
-                    <div className="w-14 h-14 bg-white/30 backdrop-blur-md rounded-full flex items-center justify-center text-white shadow-2xl border border-white/50 mb-2">
-                      <Lock size={24} />
+                  {!isPremiumOrElite && (
+                    <div className="absolute inset-0 bg-black/10 flex flex-col items-center justify-center backdrop-blur-[2px] z-10">
+                      <div className="w-14 h-14 bg-white/30 backdrop-blur-md rounded-full flex items-center justify-center text-white shadow-2xl border border-white/50 mb-2">
+                        <Lock size={24} />
+                      </div>
+                      <span className="text-white text-sm font-semibold tracking-wide drop-shadow-md">Photos Locked</span>
                     </div>
-                    <span className="text-white text-sm font-semibold tracking-wide drop-shadow-md">Photos Locked</span>
-                  </div>
+                  )}
                   
                   {/* Verification Badge */}
                   <div className="absolute bottom-4 right-6 w-12 h-12 bg-green-500 rounded-full border-4 border-white flex items-center justify-center shadow-lg z-20">
@@ -149,10 +160,10 @@ export default function ShowcaseProfiles() {
                   {/* Call to Action */}
                   <div className="mt-6 pt-6 border-t border-gray-100">
                     <Link 
-                      to="/login?type=register"
+                      to={isLoggedIn ? "/active-members" : "/login?type=register"}
                       className="flex items-center justify-center gap-2 w-full py-3.5 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors shadow-md hover:shadow-lg"
                     >
-                      <span>Register to Connect</span>
+                      <span>{isLoggedIn ? "View Full Profile" : "Register to Connect"}</span>
                       <Heart size={18} />
                     </Link>
                   </div>

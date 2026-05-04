@@ -20,7 +20,7 @@ export default function ActiveMembers() {
     } catch (e) {}
     
     return {
-      minAge: '', maxAge: '', id: '', maritalStatus: '', 
+      minAge: '18', maxAge: '60', id: '', maritalStatus: '', 
       religion, caste: '', 
       subCaste: '', language: '', profession: '',
       country: '', state: '', city: '', minHeight: '', maxHeight: '', memberType: 'all'
@@ -181,11 +181,19 @@ export default function ActiveMembers() {
                 <div className="flex gap-3">
                   <div className="w-1/2">
                     <label className="text-xs text-gray-500 mb-1 block font-medium">Age From</label>
-                    <input name="minAge" value={filters.minAge} onChange={handleChange} type="number" placeholder="18" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                    <select name="minAge" value={filters.minAge} onChange={handleChange} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors">
+                      {Array.from({ length: 43 }, (_, i) => 18 + i).map(age => (
+                        <option key={age} value={age}>{age}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="w-1/2">
                     <label className="text-xs text-gray-500 mb-1 block font-medium">To</label>
-                    <input name="maxAge" value={filters.maxAge} onChange={handleChange} type="number" placeholder="60" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                    <select name="maxAge" value={filters.maxAge} onChange={handleChange} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors">
+                      {Array.from({ length: 43 }, (_, i) => 18 + i).map(age => (
+                        <option key={age} value={age}>{age}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 

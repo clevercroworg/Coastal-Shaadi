@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import DashboardNavbar from '../components/DashboardNavbar';
-import { Heart, Send, Inbox, Users, Check, X, MessageCircle, User, Loader2, Clock } from 'lucide-react';
+import FullProfileModal from '../components/FullProfileModal';
+import { Heart, Send, Inbox, Users, Check, X, MessageCircle, User, Loader2, Clock, ExternalLink } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 
 export default function Interests() {
@@ -9,6 +10,7 @@ export default function Interests() {
   const [receivedInterests, setReceivedInterests] = useState([]);
   const [matches, setMatches] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedMember, setSelectedMember] = useState(null);
   const { showToast } = useToast();
 
   const getUserData = () => {
@@ -81,6 +83,42 @@ export default function Interests() {
   const getInitials = (name) => name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
   const avatarColors = ['bg-[#800000]', 'bg-[#b8860b]', 'bg-[#2563eb]', 'bg-[#059669]', 'bg-[#7c3aed]'];
 
+  const viewProfile = async (user) => {
+    if (!user) return;
+    try {
+      // Fetch full member data to populate the modal
+      const memberId = user.memberId || user._id;
+      const res = await fetch(`/api/user-by-member/${memberId}`);
+      if (res.ok) {
+        const fullUser = await res.json();
+        setSelectedMember({
+          id: fullUser.memberId || fullUser._id,
+          memberId: fullUser.memberId,
+          name: `${fullUser.firstName} ${fullUser.lastName}`,
+          age: fullUser.profileData?.age || '-',
+          height: fullUser.profileData?.height || '-',
+          gender: fullUser.gender || '-',
+          religion: fullUser.religion || '-',
+          caste: fullUser.caste || '-',
+          subCaste: fullUser.profileData?.subCaste || '-',
+          language: fullUser.profileData?.motherTongue || '-',
+          maritalStatus: fullUser.profileData?.maritalStatus || '-',
+          profession: fullUser.profileData?.profession || '-',
+          city: fullUser.profileData?.city || '-',
+          state: fullUser.profileData?.state || '-',
+          location: [fullUser.profileData?.city, fullUser.profileData?.state, fullUser.profileData?.country].filter(l => l && l !== '-').join(', ') || '-',
+          image: fullUser.image || null,
+          whatsappConsent: fullUser.whatsappConsent || false,
+          whatsappNumber: fullUser.whatsappNumber || '',
+          type: fullUser.memberType || 'Free'
+        });
+      }
+    } catch (err) {
+      console.error('Failed to fetch member profile', err);
+      showToast('Failed to load profile', 'error');
+    }
+  };
+
   const formatDate = (dateStr) => {
     const d = new Date(dateStr);
     const now = new Date();
@@ -116,22 +154,22 @@ export default function Interests() {
     const location = user?.profileData?.location || `${user?.profileData?.city || '-'}, ${user?.profileData?.country || '-'}`;
 
     return (
-      <div className="bg-white rounded-xl border border-gray-100 p-5 flex items-center gap-5 hover:shadow-md transition-shadow">
-        {/* Avatar */}
-        <div className="shrink-0">
+      <div className="bg-white rounded-xl border border-gray-100 p-5 flex items-center gap-5 hover:shadow-md transition-all duration-200">
+        {/* Avatar — clickable */}
+        <div className="shrink-0 cursor-pointer group" onClick={() => viewProfile(user)}>
           {user?.image ? (
-            <img src={user.image} alt={name} className="w-16 h-16 rounded-xl object-cover" />
+            <img src={user.image} alt={name} className="w-16 h-16 rounded-xl object-cover ring-2 ring-transparent group-hover:ring-primary/30 transition-all" />
           ) : (
-            <div className={`w-16 h-16 rounded-xl flex items-center justify-center text-white font-bold text-lg ${avatarColors[(user?._id || user?.memberId || '').charCodeAt(0) % avatarColors.length]}`}>
+            <div className={`w-16 h-16 rounded-xl flex items-center justify-center text-white font-bold text-lg ring-2 ring-transparent group-hover:ring-primary/30 transition-all ${avatarColors[(user?._id || user?.memberId || '').charCodeAt(0) % avatarColors.length]}`}>
               {getInitials(name)}
             </div>
           )}
         </div>
 
-        {/* Info */}
-        <div className="flex-1 min-w-0">
+        {/* Info — clickable */}
+        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => viewProfile(user)}>
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-bold text-gray-900 text-sm truncate">{name}</h3>
+            <h3 className="font-bold text-gray-900 text-sm truncate hover:text-primary transition-colors">{name}</h3>
             {statusBadge(status)}
           </div>
           <p className="text-xs text-gray-500 mb-1">
@@ -171,6 +209,13 @@ export default function Interests() {
               <MessageCircle size={14} /> Chat Now
             </button>
           )}
+          <button
+            onClick={() => viewProfile(user)}
+            className="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
+            title="View Full Profile"
+          >
+            <ExternalLink size={14} /> View
+          </button>
         </div>
       </div>
     );
@@ -296,6 +341,12 @@ export default function Interests() {
           </div>
         )}
       </div>
+
+      <FullProfileModal
+        isOpen={!!selectedMember}
+        member={selectedMember}
+        onClose={() => setSelectedMember(null)}
+      />
     </main>
   );
 }

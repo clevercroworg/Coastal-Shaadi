@@ -27,13 +27,13 @@ export default function Navbar() {
     { name: 'Home', path: '/' },
     { name: 'Active Members', path: '/active-members' },
     { name: 'About', path: '/about' },
-    { name: 'Happy Stories', path: '/success-stories' },
     { name: 'Pricing', path: '/pricing' },
     { name: 'Contact', path: '/contact' }
   ];
 
   if (isLoggedIn) {
     links.splice(2, 0, { name: 'My Profile', path: '/profile' });
+    links.splice(4, 0, { name: 'Messages', path: '/messaging' });
   }
 
   // Pages with dark hero backgrounds where transparent navbar works

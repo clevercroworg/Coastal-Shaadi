@@ -484,7 +484,16 @@ app.get('/api/cloudinary-signature', (req, res) => {
 
 app.get('/api/showcase-profiles', async (req, res) => {
   try {
-    const users = await User.find({ role: 'user', status: 'approved' })
+    const filter = { role: 'user', status: 'approved' };
+    
+    // If viewer's gender is provided, show opposite gender profiles
+    const viewerGender = req.query.viewerGender;
+    if (viewerGender) {
+      // Show opposite gender: if viewer is Female, show Male profiles and vice versa
+      filter.gender = viewerGender === 'Female' ? 'Male' : 'Female';
+    }
+    
+    const users = await User.find(filter)
       .sort({ createdAt: -1 })
       .limit(3)
       .select('firstName memberId gender religion caste profileData image')

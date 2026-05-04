@@ -11,7 +11,16 @@ export default function ShowcaseProfiles() {
   useEffect(() => {
     const fetchProfiles = async () => {
       try {
-        const res = await fetch('/api/showcase-profiles');
+        // Pass logged-in user's gender so API returns opposite-gender profiles
+        let genderParam = '';
+        try {
+          const stored = localStorage.getItem('userProfile');
+          if (stored) {
+            const u = JSON.parse(stored);
+            if (u.gender) genderParam = `?viewerGender=${encodeURIComponent(u.gender)}`;
+          }
+        } catch (e) {}
+        const res = await fetch(`/api/showcase-profiles${genderParam}`);
         if (res.ok) {
           const data = await res.json();
           if (data && data.length > 0) {
@@ -41,7 +50,7 @@ export default function ShowcaseProfiles() {
   } catch (e) {}
   
   const isLoggedIn = !!userData;
-  const isPremiumOrElite = userData?.memberType === 'Premium' || userData?.memberType === 'Elite';
+  const isPaidMember = userData?.memberType && userData.memberType !== 'Free';
 
   if (loading) return null;
 
@@ -107,13 +116,13 @@ export default function ShowcaseProfiles() {
                     <img 
                       src={profile.image} 
                       alt="Member Profile" 
-                      className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${!isPremiumOrElite ? 'filter blur-[20px] scale-125 opacity-90' : ''}`}
+                      className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${!isPaidMember ? 'filter blur-[20px] scale-125 opacity-90' : ''}`}
                     />
                   ) : (
                     <img 
                       src={getFallbackImage(profile, index)} 
                       alt="Member Profile Placeholder" 
-                      className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${!isPremiumOrElite ? 'filter blur-[20px] scale-125 opacity-90' : ''}`}
+                      className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${!isPaidMember ? 'filter blur-[20px] scale-125 opacity-90' : ''}`}
                     />
                   )}
                   
@@ -121,7 +130,7 @@ export default function ShowcaseProfiles() {
                   <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white via-white/70 to-transparent z-10" />
                   
                   {/* Lock Overlay */}
-                  {!isPremiumOrElite && (
+                  {!isPaidMember && (
                     <div className="absolute inset-0 bg-black/10 flex flex-col items-center justify-center backdrop-blur-[2px] z-10">
                       <div className="w-14 h-14 bg-white/30 backdrop-blur-md rounded-full flex items-center justify-center text-white shadow-2xl border border-white/50 mb-2">
                         <Lock size={24} />

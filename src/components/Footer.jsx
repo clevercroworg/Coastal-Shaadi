@@ -79,10 +79,6 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-6 text-gray-500 text-xs">
           <p>&copy; {new Date().getFullYear()} Coastal Shaadi. All rights reserved.</p>
-          <span className="hidden sm:block text-gray-600">|</span>
-          <p className="flex items-center gap-1.5">
-            Made with <Heart size={12} className="text-primary" fill="currentColor" /> in Udupi
-          </p>
         </div>
       </div>
     </footer>

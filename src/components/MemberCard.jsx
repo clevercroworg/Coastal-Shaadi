@@ -15,18 +15,6 @@ export default function MemberCard({ member, onUpgradePrompt, onViewProfile }) {
   const isInterested = interestedIds.includes(member.id);
   const isIgnored = ignoredIds.includes(member.id);
 
-  const getDefaultImage = (religion, gender) => {
-    if (gender === 'Female') {
-      if (religion === 'Hindu') return '/images/hindu-female.png';
-      if (religion === 'Christian') return '/images/christian-female.png';
-      return '/images/hindu-female.png'; // default fallback
-    } else {
-      if (religion === 'Hindu') return '/images/hindu-male.png';
-      if (religion === 'Christian') return '/images/christian-male.png';
-      return '/images/hindu-male.png'; // default fallback
-    }
-  };
-
   return (
     <div className={`bg-white rounded-xl shadow-sm border ${
       member.isBoosted ? 'border-amber-300 ring-2 ring-amber-100 shadow-amber-100/50' : 
@@ -57,10 +45,12 @@ export default function MemberCard({ member, onUpgradePrompt, onViewProfile }) {
         className="w-32 h-32 md:w-36 md:h-36 shrink-0 rounded-lg bg-gray-200 overflow-hidden relative group cursor-pointer"
         onClick={() => { if(isFreePlan) onUpgradePrompt('Clear Photos'); else onViewProfile(); }}
       >
-        {member.image && !member.image.includes('unsplash') ? (
+        {member.image ? (
           <img src={member.image} alt={member.name} className={`w-full h-full object-cover transition-all duration-300 ${isFreePlan ? 'blur-xl scale-110' : ''}`} />
         ) : (
-          <img src={getDefaultImage(member.religion, member.gender)} alt={member.name} className={`w-full h-full object-cover transition-all duration-300 ${isFreePlan ? 'blur-xl scale-110' : ''}`} />
+          <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-gray-300">
+            <User className="w-14 h-14" />
+          </div>
         )}
         
         {isFreePlan && (

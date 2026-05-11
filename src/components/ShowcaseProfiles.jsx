@@ -54,11 +54,6 @@ export default function ShowcaseProfiles() {
 
   if (loading) return null;
 
-  const getFallbackImage = (profile, index) => {
-    if (profile.gender === 'male') return '/images/showcase_m1.png';
-    return index % 2 === 0 ? '/images/showcase_w1.png' : '/images/showcase_w2.png';
-  };
-
   return (
     <section className="relative py-20 bg-canvas overflow-hidden">
       {/* Background Decor */}
@@ -120,8 +115,8 @@ export default function ShowcaseProfiles() {
                     />
                   ) : (
                     <img 
-                      src={getFallbackImage(profile, index)} 
-                      alt="Member Profile Placeholder" 
+                      src={`/images/showcase_w${(index % 3) + 1}.png`} 
+                      alt="Featured Member" 
                       className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${!isPaidMember ? 'filter blur-[20px] scale-125 opacity-90' : ''}`}
                     />
                   )}

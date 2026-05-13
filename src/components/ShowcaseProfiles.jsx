@@ -36,21 +36,50 @@ export default function ShowcaseProfiles() {
     fetchProfiles();
   }, []);
 
-  // Fallback dummy data if no approved profiles exist in DB or API fails
-  const displayProfiles = profiles.length > 0 ? profiles : [
-    { _id: '1', firstName: 'Priya', memberId: 'CS-482910', religion: 'Hindu', caste: 'Bunt', profileData: { age: 26, city: 'Mangalore', state: 'Karnataka' }, image: '/images/showcase_w1.png' },
-    { _id: '2', firstName: 'Rahul', memberId: 'CS-839211', religion: 'Hindu', caste: 'Billava', profileData: { age: 29, city: 'Udupi', state: 'Karnataka' }, image: '/images/showcase_m1.png' },
-    { _id: '3', firstName: 'Sneha', memberId: 'CS-102934', religion: 'Christian', caste: 'Catholic', profileData: { age: 25, city: 'Manipal', state: 'Karnataka' }, image: '/images/showcase_w2.png' }
-  ];
-
   let userData = null;
   try {
     const stored = localStorage.getItem('userProfile');
     if (stored) userData = JSON.parse(stored);
   } catch (e) {}
-  
+
+  const viewerGender = userData?.gender;
+
+  // Fallback dummy data based on viewer gender
+  const fallbackFemales = [
+    { _id: 'f1', firstName: 'Priya', memberId: 'CS-482910', religion: 'Hindu', caste: 'Bunt', gender: 'Female', profileData: { age: 26, city: 'Mangalore', state: 'Karnataka' }, image: '/images/showcase_w1.png' },
+    { _id: 'f2', firstName: 'Sneha', memberId: 'CS-102934', religion: 'Christian', caste: 'Catholic', gender: 'Female', profileData: { age: 25, city: 'Manipal', state: 'Karnataka' }, image: '/images/showcase_w2.png' },
+    { _id: 'f3', firstName: 'Anjali', memberId: 'CS-293812', religion: 'Hindu', caste: 'Gowda', gender: 'Female', profileData: { age: 24, city: 'Bangalore', state: 'Karnataka' }, image: '/images/showcase_w3.png' }
+  ];
+
+  const fallbackMales = [
+    { _id: 'm1', firstName: 'Rahul', memberId: 'CS-839211', religion: 'Hindu', caste: 'Billava', gender: 'Male', profileData: { age: 29, city: 'Udupi', state: 'Karnataka' }, image: '/images/showcase_m1.png' },
+    { _id: 'm2', firstName: 'Vikram', memberId: 'CS-394821', religion: 'Hindu', caste: 'Bunt', gender: 'Male', profileData: { age: 28, city: 'Mangalore', state: 'Karnataka' }, image: '/images/hindu-male.png' },
+    { _id: 'm3', firstName: 'Rohan', memberId: 'CS-928374', religion: 'Christian', caste: 'Catholic', gender: 'Male', profileData: { age: 27, city: 'Manipal', state: 'Karnataka' }, image: '/images/christian-male.png' }
+  ];
+
+  const fallbackMixed = [
+    fallbackFemales[0],
+    fallbackMales[0],
+    fallbackFemales[1]
+  ];
+
+  let selectedFallback = fallbackMixed;
+  if (viewerGender === 'Male') selectedFallback = fallbackFemales;
+  if (viewerGender === 'Female') selectedFallback = fallbackMales;
+
+  const displayProfiles = profiles.length > 0 ? profiles : selectedFallback;
+
   const isLoggedIn = !!userData;
   const isPaidMember = userData?.memberType && userData.memberType !== 'Free';
+
+  const getDefaultImage = (gender, index) => {
+    if (gender === 'Male') {
+      const maleImages = ['/images/showcase_m1.png', '/images/hindu-male.png', '/images/christian-male.png'];
+      return maleImages[index % maleImages.length];
+    }
+    const femaleImages = ['/images/showcase_w1.png', '/images/showcase_w2.png', '/images/showcase_w3.png'];
+    return femaleImages[index % femaleImages.length];
+  };
 
   if (loading) return null;
 
@@ -115,7 +144,7 @@ export default function ShowcaseProfiles() {
                     />
                   ) : (
                     <img 
-                      src={`/images/showcase_w${(index % 3) + 1}.png`} 
+                      src={getDefaultImage(profile.gender, index)} 
                       alt="Featured Member" 
                       className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${!isPaidMember ? 'filter blur-[20px] scale-125 opacity-90' : ''}`}
                     />

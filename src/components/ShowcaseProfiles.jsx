@@ -8,19 +8,24 @@ export default function ShowcaseProfiles() {
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  let userData = null;
+  try {
+    const stored = localStorage.getItem('userProfile');
+    if (stored) userData = JSON.parse(stored);
+  } catch (e) {}
+
+  const isLoggedIn = !!userData;
+  const viewerGender = userData?.gender;
+
   useEffect(() => {
+    if (isLoggedIn) {
+      setLoading(false);
+      return;
+    }
+
     const fetchProfiles = async () => {
       try {
-        // Pass logged-in user's gender so API returns opposite-gender profiles
-        let genderParam = '';
-        try {
-          const stored = localStorage.getItem('userProfile');
-          if (stored) {
-            const u = JSON.parse(stored);
-            if (u.gender) genderParam = `?viewerGender=${encodeURIComponent(u.gender)}`;
-          }
-        } catch (e) {}
-        const res = await fetch(`/api/showcase-profiles${genderParam}`);
+        const res = await fetch(`/api/showcase-profiles`);
         if (res.ok) {
           const data = await res.json();
           if (data && data.length > 0) {
@@ -34,15 +39,9 @@ export default function ShowcaseProfiles() {
       }
     };
     fetchProfiles();
-  }, []);
+  }, [isLoggedIn]);
 
-  let userData = null;
-  try {
-    const stored = localStorage.getItem('userProfile');
-    if (stored) userData = JSON.parse(stored);
-  } catch (e) {}
-
-  const viewerGender = userData?.gender;
+  if (isLoggedIn) return null;
 
   // Fallback dummy data based on viewer gender
   const fallbackFemales = [
@@ -69,7 +68,6 @@ export default function ShowcaseProfiles() {
 
   const displayProfiles = profiles.length > 0 ? profiles : selectedFallback;
 
-  const isLoggedIn = !!userData;
   const isPaidMember = userData?.memberType && userData.memberType !== 'Free';
 
   const getDefaultImage = (gender, index) => {

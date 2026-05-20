@@ -7,6 +7,7 @@ export default function CTA() {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: '-80px' });
   const navigate = useNavigate();
+  const isLoggedIn = !!localStorage.getItem('token');
 
   return (
     <section className="relative overflow-hidden">
@@ -28,9 +29,9 @@ export default function CTA() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <motion.button whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }}
-                onClick={() => navigate('/login?type=register')}
+                onClick={() => navigate(isLoggedIn ? '/active-members' : '/login?type=register')}
                 className="bg-primary text-white px-10 py-4 rounded-full font-bold text-sm sm:text-base shadow-lg hover:shadow-[0_8px_30px_rgba(128,0,0,0.3)] transition-all uppercase tracking-wider">
-                Register Now
+                {isLoggedIn ? 'Explore Matches' : 'Register Now'}
               </motion.button>
               <motion.button whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }}
                 onClick={() => navigate('/contact')}

@@ -14,7 +14,7 @@ export default function ShowcaseProfiles() {
     if (stored) userData = JSON.parse(stored);
   } catch (e) {}
 
-  const isLoggedIn = !!userData;
+  const isLoggedIn = !!localStorage.getItem('token');
   const viewerGender = userData?.gender;
 
   useEffect(() => {

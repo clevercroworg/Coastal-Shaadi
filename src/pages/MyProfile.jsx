@@ -95,14 +95,13 @@ export default function MyProfile() {
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [activeLightboxImage, setActiveLightboxImage] = useState(null);
   const [isWindowFocused, setIsWindowFocused] = useState(true);
-  const [isScanning, setIsScanning] = useState(false);
-  const [scanPos, setScanPos] = useState({ x: 0, y: 0 });
+  const [isMultiTouchBlocked, setIsMultiTouchBlocked] = useState(false);
 
   useEffect(() => {
     const handleFocus = () => setIsWindowFocused(true);
     const handleBlur = () => {
       setIsWindowFocused(false);
-      setIsScanning(false);
+      setIsMultiTouchBlocked(false);
     };
 
     window.addEventListener('focus', handleFocus);
@@ -114,39 +113,22 @@ export default function MyProfile() {
     };
   }, []);
 
-  const handleScanMove = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    let clientX, clientY;
-
-    if (e.touches && e.touches.length > 0) {
-      if (e.touches.length > 1) {
-        setIsScanning(false);
-        return;
-      }
-      clientX = e.touches[0].clientX;
-      clientY = e.touches[0].clientY;
-    } else {
-      clientX = e.clientX;
-      clientY = e.clientY;
-    }
-
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-
-    if (x >= 0 && x <= rect.width && y >= 0 && y <= rect.height) {
-      setScanPos({ x, y });
-    } else {
-      setIsScanning(false);
+  const handleTouchStart = (e) => {
+    if (e.touches && e.touches.length > 1) {
+      setIsMultiTouchBlocked(true);
     }
   };
 
-  const handleScanStart = (e) => {
-    setIsScanning(true);
-    handleScanMove(e);
+  const handleTouchMove = (e) => {
+    if (e.touches && e.touches.length > 1) {
+      setIsMultiTouchBlocked(true);
+    }
   };
 
-  const handleScanEnd = () => {
-    setIsScanning(false);
+  const handleTouchEnd = (e) => {
+    if (!e.touches || e.touches.length === 0) {
+      setIsMultiTouchBlocked(false);
+    }
   };
 
   // Keyboard navigation for user profile lightbox
@@ -1041,64 +1023,46 @@ export default function MyProfile() {
               className="relative max-w-[85vw] max-h-[80vh] flex items-center justify-center select-none"
             >
               <div 
-                className="relative overflow-hidden rounded-2xl cursor-crosshair bg-black/40 min-h-[320px] min-w-[280px] sm:min-w-[320px] flex items-center justify-center border border-white/10"
-                onMouseMove={handleScanMove}
-                onMouseEnter={handleScanStart}
-                onMouseLeave={handleScanEnd}
-                onTouchStart={handleScanStart}
-                onTouchMove={handleScanMove}
-                onTouchEnd={handleScanEnd}
-                onTouchCancel={handleScanEnd}
+                className="relative overflow-hidden rounded-2xl bg-black/5"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                onTouchCancel={handleTouchEnd}
               >
-                {/* The Profile Photo with Circular ClipPath revealing scanning lens */}
-                <div 
-                  className="transition-opacity duration-300 select-none pointer-events-none"
-                  style={{
-                    opacity: isScanning && isWindowFocused ? 1 : 0.05,
-                    filter: isScanning && isWindowFocused ? 'none' : 'blur(20px)'
-                  }}
-                >
+                {/* Professional Watermarked Photo display */}
+                <div className={`transition-all duration-500 ${(!isWindowFocused || isMultiTouchBlocked) ? 'opacity-0 scale-95 blur-3xl pointer-events-none' : 'opacity-100'}`}>
                   <img
                     src={activeLightboxImage}
                     alt="My profile preview in high resolution"
                     draggable={false}
                     onContextMenu={(e) => e.preventDefault()}
-                    className="max-w-full max-h-[80vh] object-contain rounded-2xl select-none"
-                    style={{
-                      clipPath: isScanning && isWindowFocused ? `circle(80px at ${scanPos.x}px ${scanPos.y}px)` : 'circle(0px at 0px 0px)',
-                      WebkitClipPath: isScanning && isWindowFocused ? `circle(80px at ${scanPos.x}px ${scanPos.y}px)` : 'circle(0px at 0px 0px)',
-                      transition: 'clip-path 0.08s ease-out, -webkit-clip-path 0.08s ease-out'
-                    }}
+                    className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 select-none"
                   />
+                  
+                  {/* Physical shield overlay to block drag, right-click, and inspect triggers on the raw image */}
+                  <div className="absolute inset-0 bg-transparent rounded-2xl z-10 select-none" onContextMenu={(e) => e.preventDefault()} />
                   
                   {/* Visual Repeating Diagonal Security Watermark */}
                   <div 
                     className="absolute inset-0 rounded-2xl z-20 select-none pointer-events-none" 
-                    style={{
-                      ...watermarkStyle,
-                      clipPath: isScanning && isWindowFocused ? `circle(80px at ${scanPos.x}px ${scanPos.y}px)` : 'circle(0px at 0px 0px)',
-                      WebkitClipPath: isScanning && isWindowFocused ? `circle(80px at ${scanPos.x}px ${scanPos.y}px)` : 'circle(0px at 0px 0px)'
-                    }}
+                    style={watermarkStyle}
                   />
                 </div>
 
-                {/* Physical absolute shield */}
-                <div className="absolute inset-0 bg-transparent z-10 select-none pointer-events-none" />
-
-                {/* Interactive Instruction Lock Screen Overlay when not scanning */}
-                {(!isScanning || !isWindowFocused) && (
-                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/95 backdrop-blur-md p-6 text-center select-none pointer-events-none">
-                    <div className="w-14 h-14 bg-accent/10 rounded-full flex items-center justify-center mb-3 text-accent border border-accent/25 animate-pulse">
-                      <Lock size={26} />
+                {/* Focus Loss or Multi-Touch screenshot block warning panel */}
+                {(!isWindowFocused || isMultiTouchBlocked) && (
+                  <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/95 backdrop-blur-xl p-8 text-center rounded-2xl border border-red-500/20 shadow-2xl min-w-[280px]">
+                    <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4 text-red-500 animate-pulse border border-red-500/25">
+                      <ShieldAlert size={34} />
                     </div>
-                    <h4 className="text-accent font-serif font-bold text-base uppercase tracking-wider mb-1">Security Shield Active</h4>
-                    <p className="text-white text-xs font-semibold mb-1">
-                      {!isWindowFocused ? 'Screenshot Capture Blocked' : 'Interactive Scanner Enabled'}
+                    <h4 className="text-red-500 font-serif font-bold text-lg uppercase tracking-widest mb-2">Security Shield Active</h4>
+                    <p className="text-white text-sm font-semibold mb-1">
+                      {isMultiTouchBlocked ? 'Multi-Touch Shortcut Blocked' : 'Screenshot / Capture Blocked'}
                     </p>
-                    <p className="text-gray-400 text-[10px] max-w-xs leading-relaxed mt-1">
-                      {!isWindowFocused 
-                        ? 'Capture utility detected. Defocus blocks full-image visualization.'
-                        : 'Press and drag your finger over this frame to scan and reveal the profile picture.'}
+                    <p className="text-gray-400 text-xs max-w-xs leading-relaxed">
+                      {isMultiTouchBlocked
+                        ? 'Multi-touch gesture shortcuts are disabled for profile security. Use single-touch viewing only.'
+                        : 'Matrimonial profile pictures are private. Screen grabs, copies, or unauthorized sharing violate our Terms of Service.'}
                     </p>
                   </div>
                 )}

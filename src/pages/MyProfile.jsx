@@ -485,7 +485,7 @@ export default function MyProfile() {
               <div className="relative group">
                 <div className={`w-32 h-32 rounded-full border-4 border-white bg-white shadow-xl overflow-hidden ring-2 ring-primary/10 relative transition-all duration-300 ${isUploading ? 'ring-4 ring-primary/50 animate-pulse' : ''}`}>
                   {profileImage ? (
-                    <img src={profileImage} alt="Profile" className={`w-full h-full object-cover ${isUploading ? 'opacity-70 blur-[1px]' : ''}`} />
+                    <img src={profileImage} alt="Profile" className={`w-full h-full object-cover object-top ${isUploading ? 'opacity-70 blur-[1px]' : ''}`} />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-gray-300">
                       <User size={56} />
@@ -579,7 +579,7 @@ export default function MyProfile() {
                     <div key={index} className="relative aspect-square rounded-xl bg-gray-50 border-2 border-dashed border-gray-200 overflow-hidden flex flex-col items-center justify-center group">
                       {imageUrl ? (
                         <>
-                          <img src={imageUrl} alt={`Additional ${index + 1}`} className="w-full h-full object-cover" />
+                          <img src={imageUrl} alt={`Additional ${index + 1}`} className="w-full h-full object-cover object-top" />
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
                             <button
                               onClick={() => handleRemoveAdditionalImage(index)}

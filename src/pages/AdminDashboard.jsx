@@ -187,7 +187,7 @@ export default function AdminDashboard() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 overflow-hidden shrink-0">
-                            {user.image ? <img src={user.image} alt={user.firstName} className="w-full h-full object-cover" /> : <UserIcon size={20} />}
+                            {user.image ? <img src={user.image} alt={user.firstName} className="w-full h-full object-cover object-top" /> : <UserIcon size={20} />}
                           </div>
                           <div>
                             <div className="font-semibold text-gray-900">{user.firstName} {user.lastName}</div>

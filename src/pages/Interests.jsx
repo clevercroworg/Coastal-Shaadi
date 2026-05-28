@@ -158,7 +158,7 @@ export default function Interests() {
         {/* Avatar — clickable */}
         <div className="shrink-0 cursor-pointer group" onClick={() => viewProfile(user)}>
           {user?.image ? (
-            <img src={user.image} alt={name} className="w-16 h-16 rounded-xl object-cover ring-2 ring-transparent group-hover:ring-primary/30 transition-all" />
+            <img src={user.image} alt={name} className="w-16 h-16 rounded-xl object-cover object-top ring-2 ring-transparent group-hover:ring-primary/30 transition-all" />
           ) : (
             <div className={`w-16 h-16 rounded-xl flex items-center justify-center text-white font-bold text-lg ring-2 ring-transparent group-hover:ring-primary/30 transition-all ${avatarColors[(user?._id || user?.memberId || '').charCodeAt(0) % avatarColors.length]}`}>
               {getInitials(name)}

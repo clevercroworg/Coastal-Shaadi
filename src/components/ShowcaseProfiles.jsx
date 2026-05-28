@@ -138,13 +138,13 @@ export default function ShowcaseProfiles() {
                     <img 
                       src={profile.image} 
                       alt="Member Profile" 
-                      className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${!isPaidMember ? 'filter blur-[20px] scale-125 opacity-90' : ''}`}
+                      className={`w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-110 ${!isPaidMember ? 'filter blur-[20px] scale-125 opacity-90' : ''}`}
                     />
                   ) : (
                     <img 
                       src={getDefaultImage(profile.gender, index)} 
                       alt="Featured Member" 
-                      className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${!isPaidMember ? 'filter blur-[20px] scale-125 opacity-90' : ''}`}
+                      className={`w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-110 ${!isPaidMember ? 'filter blur-[20px] scale-125 opacity-90' : ''}`}
                     />
                   )}
                   

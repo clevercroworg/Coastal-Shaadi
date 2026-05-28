@@ -1,22 +1,53 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, MapPin, Briefcase, GraduationCap, Phone, Ruler, Heart, Lock, MessageCircle } from 'lucide-react';
+import { X, User, MapPin, Briefcase, GraduationCap, Phone, Ruler, Heart, Lock, MessageCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function FullProfileModal({ member, isOpen, onClose }) {
   const navigate = useNavigate();
   const [activeImage, setActiveImage] = useState(null);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
   useEffect(() => {
     if (member) {
       setActiveImage(member.image);
+      setIsLightboxOpen(false);
     }
   }, [member]);
+
+  // Handle keyboard navigation for the lightbox
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!isLightboxOpen) return;
+      if (e.key === 'Escape') setIsLightboxOpen(false);
+      if (e.key === 'ArrowLeft') handlePrev(e);
+      if (e.key === 'ArrowRight') handleNext(e);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isLightboxOpen, activeImage]);
 
   if (!isOpen || !member) return null;
 
   const currentUser = JSON.parse(localStorage.getItem('userProfile') || '{}');
   const isFreePlan = !currentUser.memberType || currentUser.memberType === 'Free';
+
+  const allImages = [member.image, ...(member.additionalImages || [])].filter(Boolean);
+  const currentIndex = allImages.indexOf(activeImage);
+
+  const handlePrev = (e) => {
+    if (e) e.stopPropagation();
+    if (allImages.length <= 1) return;
+    const newIdx = currentIndex === 0 ? allImages.length - 1 : currentIndex - 1;
+    setActiveImage(allImages[newIdx]);
+  };
+
+  const handleNext = (e) => {
+    if (e) e.stopPropagation();
+    if (allImages.length <= 1) return;
+    const newIdx = currentIndex === allImages.length - 1 ? 0 : currentIndex + 1;
+    setActiveImage(allImages[newIdx]);
+  };
 
   return (
     <AnimatePresence>
@@ -53,9 +84,12 @@ export default function FullProfileModal({ member, isOpen, onClose }) {
           <div className="px-8 pb-8">
             <div className="relative flex flex-col gap-3 -mt-16 mb-6">
               <div className="flex justify-between items-end">
-                <div className="w-32 h-32 rounded-2xl border-4 border-white shadow-xl bg-gray-100 overflow-hidden relative">
+                <div 
+                  onClick={() => { if (!isFreePlan && activeImage) setIsLightboxOpen(true); }}
+                  className={`w-32 h-32 rounded-2xl border-4 border-white shadow-xl bg-gray-100 overflow-hidden relative ${!isFreePlan && activeImage ? 'cursor-zoom-in hover:scale-102 hover:shadow-2xl transition-all duration-300' : ''}`}
+                >
                   {activeImage ? (
-                    <img src={activeImage} alt={member.name} className="w-full h-full object-cover" />
+                    <img src={activeImage} alt={member.name} className="w-full h-full object-cover transition-transform duration-500 hover:scale-110" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400">
                       <User size={48} />
@@ -156,10 +190,76 @@ export default function FullProfileModal({ member, isOpen, onClose }) {
                 </div>
               )}
 
-            </div>
+             </div>
           </div>
         </motion.div>
       </div>
+
+      {/* Lightbox / Fullscreen Popup */}
+      <AnimatePresence>
+        {isLightboxOpen && activeImage && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md">
+            {/* Dark Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsLightboxOpen(false)}
+              className="absolute inset-0 cursor-zoom-out"
+            />
+
+            {/* Close Button */}
+            <button
+              onClick={() => setIsLightboxOpen(false)}
+              className="absolute top-6 right-6 w-11 h-11 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer z-50 hover:scale-105"
+            >
+              <X size={24} />
+            </button>
+
+            {/* Previous Arrow (Only if multiple photos exist) */}
+            {allImages.length > 1 && (
+              <button
+                onClick={handlePrev}
+                className="absolute left-6 w-12 h-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer z-50 hover:scale-110 active:scale-95"
+              >
+                <ChevronLeft size={30} />
+              </button>
+            )}
+
+            {/* Main Full-Size Image Container */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 15 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+              className="relative max-w-[85vw] max-h-[80vh] flex items-center justify-center select-none"
+            >
+              <img
+                src={activeImage}
+                alt="Fullscreen member profile"
+                className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10"
+              />
+            </motion.div>
+
+            {/* Next Arrow (Only if multiple photos exist) */}
+            {allImages.length > 1 && (
+              <button
+                onClick={handleNext}
+                className="absolute right-6 w-12 h-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer z-50 hover:scale-110 active:scale-95"
+              >
+                <ChevronRight size={30} />
+              </button>
+            )}
+
+            {/* Photo Counter Indicator */}
+            {allImages.length > 1 && (
+              <div className="absolute bottom-6 bg-white/10 text-white/95 px-4 py-1.5 rounded-full text-xs font-bold tracking-wider backdrop-blur-md border border-white/15">
+                {currentIndex + 1} / {allImages.length}
+              </div>
+            )}
+          </div>
+        )}
+      </AnimatePresence>
     </AnimatePresence>
   );
 }

@@ -311,7 +311,7 @@ export default function Messaging() {
                     >
                       <div className="relative shrink-0">
                         {other.image ? (
-                          <img src={other.image} alt={name} className="w-12 h-12 rounded-full object-cover" />
+                          <img src={other.image} alt={name} className="w-12 h-12 rounded-full object-cover object-top" />
                         ) : (
                           <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm ${avatarColors[i % avatarColors.length]}`}>
                             {getInitials(name)}
@@ -367,7 +367,7 @@ export default function Messaging() {
                       <ChevronLeft className="w-5 h-5" />
                     </button>
                     {activeContact?.image ? (
-                      <img src={activeContact.image} alt="" className="w-10 h-10 rounded-full object-cover" />
+                      <img src={activeContact.image} alt="" className="w-10 h-10 rounded-full object-cover object-top" />
                     ) : (
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-xs ${avatarColors[0]}`}>
                         {activeContact ? getInitials(getContactName(activeContact)) : '?'}

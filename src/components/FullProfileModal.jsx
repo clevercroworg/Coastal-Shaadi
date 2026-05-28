@@ -89,7 +89,7 @@ export default function FullProfileModal({ member, isOpen, onClose }) {
                   className={`w-32 h-32 rounded-2xl border-4 border-white shadow-xl bg-gray-100 overflow-hidden relative ${!isFreePlan && activeImage ? 'cursor-zoom-in hover:scale-102 hover:shadow-2xl transition-all duration-300' : ''}`}
                 >
                   {activeImage ? (
-                    <img src={activeImage} alt={member.name} className="w-full h-full object-cover transition-transform duration-500 hover:scale-110" />
+                    <img src={activeImage} alt={member.name} className="w-full h-full object-cover object-top transition-transform duration-500 hover:scale-110" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400">
                       <User size={48} />
@@ -137,7 +137,7 @@ export default function FullProfileModal({ member, isOpen, onClose }) {
                         activeImage === member.image ? 'border-primary scale-105 shadow-sm' : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
-                      <img src={member.image} alt="Main thumbnail" className="w-full h-full object-cover" />
+                      <img src={member.image} alt="Main thumbnail" className="w-full h-full object-cover object-top" />
                     </button>
                   )}
                   {member.additionalImages.map((img, idx) => (
@@ -148,7 +148,7 @@ export default function FullProfileModal({ member, isOpen, onClose }) {
                         activeImage === img ? 'border-primary scale-105 shadow-sm' : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
-                      <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
+                      <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover object-top" />
                     </button>
                   ))}
                 </div>

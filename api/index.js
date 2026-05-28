@@ -132,6 +132,7 @@ app.get('/api/me', authMiddleware, async (req, res) => {
       memberId: user.memberId,
       profileData: user.profileData,
       image: user.image,
+      additionalImages: user.additionalImages || [],
       role: user.role,
       status: user.status,
       memberType: user.memberType,
@@ -207,7 +208,7 @@ app.post('/api/register', async (req, res) => {
     const payload = { user: { id: user.id } };
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 
-    res.status(201).json({ token, user: { id: user.id, firstName, lastName, email, gender, religion, caste, memberId, role: user.role, status: user.status, memberType: user.memberType, planExpiry: user.planExpiry, whatsappNumber: user.whatsappNumber, whatsappConsent: user.whatsappConsent } });
+    res.status(201).json({ token, user: { id: user.id, firstName, lastName, email, gender, religion, caste, memberId, role: user.role, status: user.status, memberType: user.memberType, planExpiry: user.planExpiry, whatsappNumber: user.whatsappNumber, whatsappConsent: user.whatsappConsent, additionalImages: [] } });
   } catch (err) {
     console.error('REGISTER ERROR:', err);
     res.status(500).json({ message: 'Registration failed. Please try again.' });
@@ -233,7 +234,7 @@ app.post('/api/login', async (req, res) => {
     const payload = { user: { id: user.id } };
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 
-    res.json({ token, user: { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email, gender: user.gender, religion: user.religion, caste: user.caste, memberId: user.memberId, profileData: user.profileData, image: user.image, role: user.role, status: user.status, memberType: user.memberType, planExpiry: user.planExpiry, whatsappNumber: user.whatsappNumber, whatsappConsent: user.whatsappConsent } });
+    res.json({ token, user: { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email, gender: user.gender, religion: user.religion, caste: user.caste, memberId: user.memberId, profileData: user.profileData, image: user.image, additionalImages: user.additionalImages || [], role: user.role, status: user.status, memberType: user.memberType, planExpiry: user.planExpiry, whatsappNumber: user.whatsappNumber, whatsappConsent: user.whatsappConsent } });
   } catch (err) {
     console.error('LOGIN ERROR:', err);
     res.status(500).json({ message: 'Login failed. Please try again.' });
@@ -242,7 +243,7 @@ app.post('/api/login', async (req, res) => {
 
 app.put('/api/profile', async (req, res) => {
   try {
-    const { userId, profileData, image, whatsappNumber, whatsappConsent } = req.body;
+    const { userId, profileData, image, additionalImages, whatsappNumber, whatsappConsent } = req.body;
     if (!userId) return res.status(400).json({ message: 'User ID is required' });
 
     let user;
@@ -270,6 +271,7 @@ app.put('/api/profile', async (req, res) => {
       });
     }
     if (image !== undefined) updateData.image = image;
+    if (additionalImages !== undefined) updateData.additionalImages = additionalImages;
     if (whatsappNumber !== undefined) updateData.whatsappNumber = whatsappNumber;
     if (whatsappConsent !== undefined) updateData.whatsappConsent = whatsappConsent;
 

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import ScrollToTop from './components/ScrollToTop';
 import Navbar from './components/Navbar';
@@ -26,7 +27,7 @@ import CheckoutPage from './pages/CheckoutPage';
 
 // Context
 import { MemberProvider } from './context/MemberContext';
-import { ToastProvider } from './context/ToastContext';
+import { ToastProvider, useToast } from './context/ToastContext';
 
 // Auth Guard
 import ProtectedRoute from './components/ProtectedRoute';
@@ -37,10 +38,37 @@ import FloatingWhatsApp from './components/FloatingWhatsApp';
 const AppContent = () => {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
+  const { showToast } = useToast();
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const isCmdOrCtrl = e.ctrlKey || e.metaKey;
+
+      if (e.key === 'F12') {
+        e.preventDefault();
+        showToast('Inspection is disabled for profile security. 🛡️', 'warning');
+      } else if (isCmdOrCtrl && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) {
+        e.preventDefault();
+        showToast('DevTools shortcuts are disabled for profile security. 🛡️', 'warning');
+      } else if (isCmdOrCtrl && (e.key === 'U' || e.key === 'u')) {
+        e.preventDefault();
+        showToast('Viewing page source is disabled for profile security. 🛡️', 'warning');
+      } else if (isCmdOrCtrl && (e.key === 'S' || e.key === 's')) {
+        e.preventDefault();
+        showToast('Saving profile pages is disabled. 🛡️', 'warning');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showToast]);
 
   return (
     <div className="font-sans text-gray-900 overflow-x-hidden bg-canvas min-h-screen flex flex-col">
       <Heartbeat />
+
       {!isAdminRoute && <Navbar />}
       {!isAdminRoute && <FloatingWhatsApp />}
       <div className="flex-1">

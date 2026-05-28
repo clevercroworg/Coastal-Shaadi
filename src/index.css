@@ -45,6 +45,11 @@
   .text-glow {
     text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
   }
+
+  .watermark-overlay {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='250' height='250' viewBox='0 0 250 250'><text x='50%' y='50%' fill='rgba(0,0,0,0.08)' stroke='rgba(255,255,255,0.12)' stroke-width='1.5' paint-order='stroke' font-size='12' font-family='system-ui, -apple-system, sans-serif' font-weight='bold' text-anchor='middle' transform='rotate(-30 125 125)'>COASTAL SHAADI • SECURE PROFILE</text></svg>");
+    background-repeat: repeat;
+  }
 }
 
 /* Subtle decorative line animation */
@@ -65,3 +70,11 @@
 .animated-line:hover::after {
   width: 100%;
 }
+
+/* Blanks out page when user attempts to print (screenshot/save protection) */
+@media print {
+  body {
+    display: none !important;
+  }
+}
+

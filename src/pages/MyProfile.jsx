@@ -84,6 +84,20 @@ export default function MyProfile() {
 
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [activeLightboxImage, setActiveLightboxImage] = useState(null);
+  const [isWindowFocused, setIsWindowFocused] = useState(true);
+
+  useEffect(() => {
+    const handleFocus = () => setIsWindowFocused(true);
+    const handleBlur = () => setIsWindowFocused(false);
+
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
 
   // Keyboard navigation for user profile lightbox
   useEffect(() => {
@@ -521,7 +535,17 @@ export default function MyProfile() {
                   className={`w-32 h-32 rounded-full border-4 border-white bg-white shadow-xl overflow-hidden ring-2 ring-primary/10 relative transition-all duration-300 ${isUploading ? 'ring-4 ring-primary/50 animate-pulse' : ''} ${profileImage ? 'cursor-zoom-in hover:scale-102 hover:shadow-2xl' : ''}`}
                 >
                   {profileImage ? (
-                    <img src={profileImage} alt="Profile" className={`w-full h-full object-cover object-top transition-transform duration-500 hover:scale-105 ${isUploading ? 'opacity-70 blur-[1px]' : ''}`} />
+                    <div className="w-full h-full relative select-none">
+                      <img 
+                        src={profileImage} 
+                        alt="Profile" 
+                        draggable={false}
+                        onContextMenu={(e) => e.preventDefault()}
+                        className={`w-full h-full object-cover object-top transition-transform duration-500 hover:scale-105 ${isUploading ? 'opacity-70 blur-[1px]' : ''}`} 
+                      />
+                      {/* Shield overlay to block drag and context menu copies */}
+                      <div className="absolute inset-0 bg-transparent z-10 select-none" onContextMenu={(e) => e.preventDefault()} />
+                    </div>
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-gray-300">
                       <User size={56} />
@@ -615,13 +639,18 @@ export default function MyProfile() {
                     <div key={index} className="relative aspect-square rounded-xl bg-gray-50 border-2 border-dashed border-gray-200 overflow-hidden flex flex-col items-center justify-center group">
                       {imageUrl ? (
                         <>
-                          <img 
-                            onClick={() => { setActiveLightboxImage(imageUrl); setIsLightboxOpen(true); }}
-                            src={imageUrl} 
-                            alt={`Additional ${index + 1}`} 
-                            className="w-full h-full object-cover object-top cursor-zoom-in transition-transform duration-500 hover:scale-105" 
-                          />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10 pointer-events-none">
+                          <div className="w-full h-full relative select-none cursor-zoom-in" onClick={() => { setActiveLightboxImage(imageUrl); setIsLightboxOpen(true); }}>
+                            <img 
+                              src={imageUrl} 
+                              alt={`Additional ${index + 1}`} 
+                              draggable={false}
+                              onContextMenu={(e) => e.preventDefault()}
+                              className="w-full h-full object-cover object-top transition-transform duration-500 hover:scale-105" 
+                            />
+                            {/* Physical shield overlay to block drag, right-click, and inspect triggers on the raw image */}
+                            <div className="absolute inset-0 bg-transparent z-10 select-none" onContextMenu={(e) => e.preventDefault()} />
+                          </div>
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20 pointer-events-none">
                             <button
                               onClick={(e) => { e.stopPropagation(); handleRemoveAdditionalImage(index); }}
                               disabled={isUploading}
@@ -961,11 +990,21 @@ export default function MyProfile() {
               transition={{ type: 'spring', damping: 25, stiffness: 220 }}
               className="relative max-w-[85vw] max-h-[80vh] flex items-center justify-center select-none"
             >
-              <img
-                src={activeLightboxImage}
-                alt="My profile preview in high resolution"
-                className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10"
-              />
+              <div className={`relative transition-all duration-300 ${!isWindowFocused ? 'blur-3xl opacity-10 scale-95 pointer-events-none' : ''}`}>
+                <img
+                  src={activeLightboxImage}
+                  alt="My profile preview in high resolution"
+                  draggable={false}
+                  onContextMenu={(e) => e.preventDefault()}
+                  className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10"
+                />
+                
+                {/* Physical shield overlay to block drag, right-click, and inspect triggers on the raw image */}
+                <div className="absolute inset-0 bg-transparent rounded-2xl z-10 select-none" onContextMenu={(e) => e.preventDefault()} />
+                
+                {/* Visual Repeating Diagonal Security Watermark */}
+                <div className="absolute inset-0 watermark-overlay rounded-2xl z-20 select-none pointer-events-none" />
+              </div>
             </motion.div>
 
             {/* Next Arrow Button */}

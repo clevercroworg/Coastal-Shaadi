@@ -505,7 +505,7 @@ app.get('/api/showcase-profiles', async (req, res) => {
   }
 });
 
-app.get('/api/members', async (req, res) => {
+app.get('/api/members', authMiddleware, async (req, res) => {
   try {
     // Auto-downgrade any globally expired plans before fetching
     await User.updateMany(
@@ -513,7 +513,14 @@ app.get('/api/members', async (req, res) => {
       { $set: { memberType: 'Free' }, $unset: { planExpiry: '' } }
     );
 
-    const users = await User.find({ role: 'user', status: 'approved' }).select('-password').lean();
+    // Fetch current logged-in user to filter by opposite gender
+    const currentUser = await User.findById(req.userId).select('gender');
+    const filter = { role: 'user', status: 'approved' };
+    if (currentUser && currentUser.gender) {
+      filter.gender = currentUser.gender === 'Female' ? 'Male' : 'Female';
+    }
+
+    const users = await User.find(filter).select('-password').lean();
 
     // Boost regions for Elite plan
     const boostRegions = ['udupi', 'mangalore', 'mangaluru', 'manipal', 'kundapura', 'karwar', 'kasaragod'];
@@ -734,10 +741,19 @@ app.post('/api/conversations', async (req, res) => {
   try {
     const { senderId, receiverId } = req.body;
 
+    const receiver = await User.findById(receiverId).select('gender');
+    if (!receiver) return res.status(404).json({ message: 'Receiver not found' });
+
     // Server-side plan check: Free users cannot initiate conversations
-    const sender = await User.findById(senderId).select('memberType');
-    if (sender && sender.memberType === 'Free') {
+    const sender = await User.findById(senderId).select('memberType gender');
+    if (!sender) return res.status(404).json({ message: 'Sender not found' });
+    if (sender.memberType === 'Free') {
       return res.status(403).json({ message: 'Upgrade your plan to start conversations.' });
+    }
+
+    // Enforce opposite gender check
+    if (sender.gender === receiver.gender) {
+      return res.status(400).json({ message: 'Conversations can only be started between profiles of the opposite gender' });
     }
 
     // Check if conversation already exists
@@ -838,6 +854,13 @@ app.post('/api/connections/send', async (req, res) => {
     const receiver = await User.findOne({ memberId: receiverMemberId });
     if (!receiver) return res.status(404).json({ message: 'User not found' });
     if (receiver._id.toString() === senderId) return res.status(400).json({ message: 'Cannot send interest to yourself' });
+
+    // Enforce opposite gender check
+    const sender = await User.findById(senderId).select('gender');
+    if (!sender) return res.status(404).json({ message: 'Sender not found' });
+    if (sender.gender === receiver.gender) {
+      return res.status(400).json({ message: 'Interests can only be sent to profiles of the opposite gender' });
+    }
 
     // Check if connection already exists (in either direction)
     const existing = await Connection.findOne({

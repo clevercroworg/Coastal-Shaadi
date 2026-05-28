@@ -37,7 +37,9 @@ export default function PendingPage() {
         // Update localStorage with fresh profile data
         localStorage.setItem('userProfile', JSON.stringify(data));
         setUserProfile(data);
-
+        // Notify MemberContext of updated userProfile
+        window.dispatchEvent(new Event('userLogin'));
+        
         if (data.status === 'approved') {
           setApproved(true);
           // Stop polling

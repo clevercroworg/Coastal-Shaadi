@@ -96,6 +96,8 @@ export default function LoginPage() {
         localStorage.setItem('token', data.token);
         localStorage.setItem('userFilter', JSON.stringify({ religion, caste }));
         localStorage.setItem('userProfile', JSON.stringify(data.user));
+        // Notify MemberContext to recognize the newly registered user profile
+        window.dispatchEvent(new Event('userLogin'));
         
         // After registration, always go to pending (pendingPlan stays in localStorage)
         if (data.user.status === 'pending' || data.user.status === 'rejected') {

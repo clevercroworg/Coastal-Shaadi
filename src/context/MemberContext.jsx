@@ -115,22 +115,38 @@ export const MemberProvider = ({ children }) => {
     } catch(e) { return null; }
   });
 
-  // Listen for login/logout events to immediately re-filter
+  // Listen for login/logout and profile update events to immediately re-filter and refetch
   useEffect(() => {
-    const handleLogin = () => {
+    const handleProfileChange = () => {
       try {
         const stored = localStorage.getItem('userProfile');
         setUserProfile(stored ? JSON.parse(stored) : null);
       } catch(e) { setUserProfile(null); }
     };
-    window.addEventListener('userLogin', handleLogin);
-    return () => window.removeEventListener('userLogin', handleLogin);
+    window.addEventListener('userLogin', handleProfileChange);
+    window.addEventListener('profileUpdated', handleProfileChange);
+    return () => {
+      window.removeEventListener('userLogin', handleProfileChange);
+      window.removeEventListener('profileUpdated', handleProfileChange);
+    };
   }, []);
 
   useEffect(() => {
     const fetchMembers = async () => {
+      const token = localStorage.getItem('token');
+      if (!token || !userProfile || userProfile.status !== 'approved') {
+        setMembers([]);
+        setIsLoading(false);
+        return;
+      }
+
       try {
-        const response = await fetch('/api/members');
+        setIsLoading(true);
+        const response = await fetch('/api/members', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         if (response.ok) {
           const data = await response.json();
           
@@ -186,7 +202,7 @@ export const MemberProvider = ({ children }) => {
     };
 
     fetchMembers();
-  }, []);
+  }, [userProfile]);
 
   const toggleShortlist = (id) => {
     setShortlistedIds(prev => {

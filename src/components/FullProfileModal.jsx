@@ -46,6 +46,16 @@ export default function FullProfileModal({ member, isOpen, onClose }) {
   const currentUser = JSON.parse(localStorage.getItem('userProfile') || '{}');
   const isFreePlan = !currentUser.memberType || currentUser.memberType === 'Free';
 
+  const viewerName = (currentUser.name || 'MEMBER').toUpperCase();
+  const viewerId = currentUser.memberId || currentUser.id || 'SECURE';
+  const currentDate = new Date().toLocaleDateString('en-IN');
+  const watermarkText = `COASTAL SHAADI • VIEWED BY ${viewerName} (${viewerId}) • ${currentDate} • DO NOT SHARE`;
+  const svgString = `<svg xmlns='http://www.w3.org/2000/svg' width='350' height='350' viewBox='0 0 350 350'><text x='50%' y='50%' fill='rgba(0,0,0,0.11)' stroke='rgba(255,255,255,0.16)' stroke-width='1.5' paint-order='stroke' font-size='10' font-family='system-ui, -apple-system, sans-serif' font-weight='bold' text-anchor='middle' transform='rotate(-30 175 175)'>${watermarkText}</text></svg>`;
+  const watermarkStyle = {
+    backgroundImage: `url("data:image/svg+xml;utf8,${encodeURIComponent(svgString)}")`,
+    backgroundRepeat: 'repeat'
+  };
+
   const allImages = [member.image, ...(member.additionalImages || [])].filter(Boolean);
   const currentIndex = allImages.indexOf(activeImage);
 
@@ -289,7 +299,10 @@ export default function FullProfileModal({ member, isOpen, onClose }) {
                  <div className="absolute inset-0 bg-transparent rounded-2xl z-10 select-none" onContextMenu={(e) => e.preventDefault()} />
                  
                  {/* Visual Repeating Diagonal Security Watermark */}
-                 <div className="absolute inset-0 watermark-overlay rounded-2xl z-20 select-none pointer-events-none" />
+                 <div 
+                   className="absolute inset-0 rounded-2xl z-20 select-none pointer-events-none" 
+                   style={watermarkStyle}
+                 />
                </div>
              </motion.div>
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, MapPin, Briefcase, GraduationCap, Phone, Ruler, Heart, Lock, MessageCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, User, MapPin, Briefcase, GraduationCap, Phone, Ruler, Heart, Lock, MessageCircle, ChevronLeft, ChevronRight, ShieldAlert } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function FullProfileModal({ member, isOpen, onClose }) {
@@ -286,23 +286,39 @@ export default function FullProfileModal({ member, isOpen, onClose }) {
                transition={{ type: 'spring', damping: 25, stiffness: 220 }}
                className="relative max-w-[85vw] max-h-[80vh] flex items-center justify-center select-none"
              >
-               <div className={`relative transition-all duration-300 ${!isWindowFocused ? 'blur-3xl opacity-10 scale-95 pointer-events-none' : ''}`}>
-                 <img
-                   src={activeImage}
-                   alt="Fullscreen member profile"
-                   draggable={false}
-                   onContextMenu={(e) => e.preventDefault()}
-                   className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10"
-                 />
-                 
-                 {/* Physical Click / Inspect shield overlay */}
-                 <div className="absolute inset-0 bg-transparent rounded-2xl z-10 select-none" onContextMenu={(e) => e.preventDefault()} />
-                 
-                 {/* Visual Repeating Diagonal Security Watermark */}
-                 <div 
-                   className="absolute inset-0 rounded-2xl z-20 select-none pointer-events-none" 
-                   style={watermarkStyle}
-                 />
+               <div className="relative">
+                 <div className={`transition-all duration-500 ${!isWindowFocused ? 'opacity-0 scale-75 blur-3xl pointer-events-none' : 'opacity-100'}`}>
+                   <img
+                     src={activeImage}
+                     alt="Fullscreen member profile"
+                     draggable={false}
+                     onContextMenu={(e) => e.preventDefault()}
+                     className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10"
+                   />
+                   
+                   {/* Physical Click / Inspect shield overlay */}
+                   <div className="absolute inset-0 bg-transparent rounded-2xl z-10 select-none" onContextMenu={(e) => e.preventDefault()} />
+                   
+                   {/* Visual Repeating Diagonal Security Watermark */}
+                   <div 
+                     className="absolute inset-0 rounded-2xl z-20 select-none pointer-events-none" 
+                     style={watermarkStyle}
+                   />
+                 </div>
+
+                 {/* Focus Loss Screenshot Intercept Shield Warning */}
+                 {!isWindowFocused && (
+                   <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/95 backdrop-blur-xl p-8 text-center rounded-2xl border border-red-500/20 shadow-2xl min-w-[280px]">
+                     <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4 text-red-500 animate-pulse border border-red-500/25">
+                       <ShieldAlert size={34} />
+                     </div>
+                     <h4 className="text-red-500 font-serif font-bold text-lg uppercase tracking-widest mb-2">Security Shield Active</h4>
+                     <p className="text-white text-sm font-semibold mb-1">Screenshot / Capture Blocked</p>
+                     <p className="text-gray-400 text-xs max-w-xs leading-relaxed">
+                       Matrimonial profile pictures are private. Screen grabs, copies, or unauthorized sharing violate our Terms of Service and will lead to account suspension.
+                     </p>
+                   </div>
+                 )}
                </div>
              </motion.div>
 

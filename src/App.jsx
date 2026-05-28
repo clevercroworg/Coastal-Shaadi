@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import ScrollToTop from './components/ScrollToTop';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
-import FloatingWhatsApp from './components/FloatingWhatsApp';
 
 // Pages
 import Home from './pages/Home';
@@ -70,7 +69,6 @@ const AppContent = () => {
         </Routes>
       </div>
       {!isAdminRoute && <Footer />}
-      {!isAdminRoute && <FloatingWhatsApp />}
     </div>
   );
 };

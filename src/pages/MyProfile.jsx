@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import DashboardNavbar from '../components/DashboardNavbar';
-import { User, Mail, Phone, MapPin, Briefcase, GraduationCap, Map, Camera, Pencil, X, Check, Heart, Calendar, Ruler, Utensils, Shield, Globe, BookOpen, Loader2 } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Briefcase, GraduationCap, Map, Camera, Pencil, X, Check, Heart, Calendar, Ruler, Utensils, Shield, Globe, BookOpen, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { useMembers } from '../context/MemberContext';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const maxDate = new Date();
 maxDate.setFullYear(maxDate.getFullYear() - 18);
@@ -80,6 +81,38 @@ export default function MyProfile() {
   const [additionalImages, setAdditionalImages] = useState(userData?.additionalImages || []);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
+
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [activeLightboxImage, setActiveLightboxImage] = useState(null);
+
+  // Keyboard navigation for user profile lightbox
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!isLightboxOpen) return;
+      if (e.key === 'Escape') setIsLightboxOpen(false);
+      if (e.key === 'ArrowLeft') handlePrev(e);
+      if (e.key === 'ArrowRight') handleNext(e);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isLightboxOpen, activeLightboxImage, profileImage, additionalImages]);
+
+  const allMyImages = [profileImage, ...additionalImages].filter(Boolean);
+  const currentIdx = allMyImages.indexOf(activeLightboxImage);
+
+  const handlePrev = (e) => {
+    if (e) e.stopPropagation();
+    if (allMyImages.length <= 1) return;
+    const newIdx = currentIdx === 0 ? allMyImages.length - 1 : currentIdx - 1;
+    setActiveLightboxImage(allMyImages[newIdx]);
+  };
+
+  const handleNext = (e) => {
+    if (e) e.stopPropagation();
+    if (allMyImages.length <= 1) return;
+    const newIdx = currentIdx === allMyImages.length - 1 ? 0 : currentIdx + 1;
+    setActiveLightboxImage(allMyImages[newIdx]);
+  };
 
   const handleAdditionalImageUpload = async (index, file) => {
     if (!file) return;
@@ -483,9 +516,12 @@ export default function MyProfile() {
             {/* Avatar */}
             <div className="flex flex-col sm:flex-row gap-5 items-center sm:items-end -mt-16 mb-6 relative z-10">
               <div className="relative group">
-                <div className={`w-32 h-32 rounded-full border-4 border-white bg-white shadow-xl overflow-hidden ring-2 ring-primary/10 relative transition-all duration-300 ${isUploading ? 'ring-4 ring-primary/50 animate-pulse' : ''}`}>
+                <div 
+                  onClick={() => { if (profileImage) { setActiveLightboxImage(profileImage); setIsLightboxOpen(true); } }}
+                  className={`w-32 h-32 rounded-full border-4 border-white bg-white shadow-xl overflow-hidden ring-2 ring-primary/10 relative transition-all duration-300 ${isUploading ? 'ring-4 ring-primary/50 animate-pulse' : ''} ${profileImage ? 'cursor-zoom-in hover:scale-102 hover:shadow-2xl' : ''}`}
+                >
                   {profileImage ? (
-                    <img src={profileImage} alt="Profile" className={`w-full h-full object-cover object-top ${isUploading ? 'opacity-70 blur-[1px]' : ''}`} />
+                    <img src={profileImage} alt="Profile" className={`w-full h-full object-cover object-top transition-transform duration-500 hover:scale-105 ${isUploading ? 'opacity-70 blur-[1px]' : ''}`} />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-gray-300">
                       <User size={56} />
@@ -579,12 +615,17 @@ export default function MyProfile() {
                     <div key={index} className="relative aspect-square rounded-xl bg-gray-50 border-2 border-dashed border-gray-200 overflow-hidden flex flex-col items-center justify-center group">
                       {imageUrl ? (
                         <>
-                          <img src={imageUrl} alt={`Additional ${index + 1}`} className="w-full h-full object-cover object-top" />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
+                          <img 
+                            onClick={() => { setActiveLightboxImage(imageUrl); setIsLightboxOpen(true); }}
+                            src={imageUrl} 
+                            alt={`Additional ${index + 1}`} 
+                            className="w-full h-full object-cover object-top cursor-zoom-in transition-transform duration-500 hover:scale-105" 
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10 pointer-events-none">
                             <button
-                              onClick={() => handleRemoveAdditionalImage(index)}
+                              onClick={(e) => { e.stopPropagation(); handleRemoveAdditionalImage(index); }}
                               disabled={isUploading}
-                              className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-full transition-transform hover:scale-110 shadow-lg disabled:opacity-50 cursor-pointer"
+                              className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-full transition-transform hover:scale-110 shadow-lg disabled:opacity-50 cursor-pointer pointer-events-auto"
                               title="Delete photo"
                             >
                               <X className="w-4 h-4" />
@@ -880,6 +921,72 @@ export default function MyProfile() {
           <option key={state} value={state} />
         ))}
       </datalist>
+
+      {/* User Upload Lightbox Preview Popup */}
+      <AnimatePresence>
+        {isLightboxOpen && activeLightboxImage && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md">
+            {/* Backdrop click to close */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsLightboxOpen(false)}
+              className="absolute inset-0 cursor-zoom-out"
+            />
+
+            {/* Close Button */}
+            <button
+              onClick={() => setIsLightboxOpen(false)}
+              className="absolute top-6 right-6 w-11 h-11 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer z-50 hover:scale-105"
+            >
+              <X size={24} />
+            </button>
+
+            {/* Previous Arrow Button */}
+            {allMyImages.length > 1 && (
+              <button
+                onClick={handlePrev}
+                className="absolute left-6 w-12 h-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer z-50 hover:scale-110 active:scale-95"
+              >
+                <ChevronLeft size={30} />
+              </button>
+            )}
+
+            {/* High-Res Photo Container */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 15 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+              className="relative max-w-[85vw] max-h-[80vh] flex items-center justify-center select-none"
+            >
+              <img
+                src={activeLightboxImage}
+                alt="My profile preview in high resolution"
+                className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10"
+              />
+            </motion.div>
+
+            {/* Next Arrow Button */}
+            {allMyImages.length > 1 && (
+              <button
+                onClick={handleNext}
+                className="absolute right-6 w-12 h-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer z-50 hover:scale-110 active:scale-95"
+              >
+                <ChevronRight size={30} />
+              </button>
+            )}
+
+            {/* Photo Counter */}
+            {allMyImages.length > 1 && (
+              <div className="absolute bottom-6 bg-white/10 text-white/95 px-4 py-1.5 rounded-full text-xs font-bold tracking-wider backdrop-blur-md border border-white/15">
+                {currentIdx + 1} / {allMyImages.length}
+              </div>
+            )}
+          </div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }

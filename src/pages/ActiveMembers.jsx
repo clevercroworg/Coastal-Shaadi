@@ -11,17 +11,19 @@ export default function ActiveMembers() {
 
   const getInitialFilters = () => {
     let religion = '';
+    let caste = '';
     try {
       const stored = localStorage.getItem('userFilter');
       if (stored) {
         const parsed = JSON.parse(stored);
         religion = parsed.religion || '';
+        caste = parsed.caste || '';
       }
     } catch (e) {}
     
     return {
       minAge: '18', maxAge: '60', id: '', maritalStatus: '', 
-      religion, caste: '', 
+      religion, caste, 
       subCaste: '', language: '', profession: '',
       country: '', state: '', city: '', minHeight: '', maxHeight: '', memberType: 'all'
     };

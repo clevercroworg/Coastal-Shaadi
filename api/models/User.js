@@ -14,6 +14,7 @@ const userSchema = new mongoose.Schema({
   memberId: { type: String, unique: true },
   profileData: { type: Object, default: {} },
   image: { type: String },
+  additionalImages: { type: [String], default: [] },
   whatsappNumber: { type: String },
   whatsappConsent: { type: Boolean, default: false },
   memberType: { type: String, enum: ['Free', 'Basic', 'Premium', 'Elite'], default: 'Free' },

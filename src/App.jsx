@@ -32,6 +32,7 @@ import { ToastProvider } from './context/ToastContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
 import AdminLogin from './pages/AdminLogin';
+import FloatingWhatsApp from './components/FloatingWhatsApp';
 
 const AppContent = () => {
   const location = useLocation();
@@ -41,6 +42,7 @@ const AppContent = () => {
     <div className="font-sans text-gray-900 overflow-x-hidden bg-canvas min-h-screen flex flex-col">
       <Heartbeat />
       {!isAdminRoute && <Navbar />}
+      {!isAdminRoute && <FloatingWhatsApp />}
       <div className="flex-1">
         <Routes>
           <Route path="/" element={<Home />} />

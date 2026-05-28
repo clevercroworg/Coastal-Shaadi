@@ -46,7 +46,17 @@ export default function MemberCard({ member, onUpgradePrompt, onViewProfile }) {
         onClick={() => { if(isFreePlan) onUpgradePrompt('Clear Photos'); else onViewProfile(); }}
       >
         {member.image ? (
-          <img src={member.image} alt={member.name} className={`w-full h-full object-cover object-top transition-all duration-300 ${isFreePlan ? 'blur-xl scale-110' : ''}`} />
+          <div className="w-full h-full relative select-none">
+            <img 
+              src={member.image} 
+              alt={member.name} 
+              draggable={false}
+              onContextMenu={(e) => e.preventDefault()}
+              className={`w-full h-full object-cover object-top transition-all duration-300 ${isFreePlan ? 'blur-xl scale-110' : ''}`} 
+            />
+            {/* Physical shield overlay to block drag, right-click, and inspect triggers on the raw image */}
+            <div className="absolute inset-0 bg-transparent z-10 select-none" onContextMenu={(e) => e.preventDefault()} />
+          </div>
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-gray-300">
             <User className="w-14 h-14" />

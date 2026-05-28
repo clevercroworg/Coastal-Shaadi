@@ -7,6 +7,20 @@ export default function FullProfileModal({ member, isOpen, onClose }) {
   const navigate = useNavigate();
   const [activeImage, setActiveImage] = useState(null);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [isWindowFocused, setIsWindowFocused] = useState(true);
+
+  useEffect(() => {
+    const handleFocus = () => setIsWindowFocused(true);
+    const handleBlur = () => setIsWindowFocused(false);
+
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
 
   useEffect(() => {
     if (member) {
@@ -89,7 +103,17 @@ export default function FullProfileModal({ member, isOpen, onClose }) {
                   className={`w-32 h-32 rounded-2xl border-4 border-white shadow-xl bg-gray-100 overflow-hidden relative ${!isFreePlan && activeImage ? 'cursor-zoom-in hover:scale-102 hover:shadow-2xl transition-all duration-300' : ''}`}
                 >
                   {activeImage ? (
-                    <img src={activeImage} alt={member.name} className="w-full h-full object-cover object-top transition-transform duration-500 hover:scale-110" />
+                    <div className="w-full h-full relative select-none">
+                      <img 
+                        src={activeImage} 
+                        alt={member.name} 
+                        draggable={false}
+                        onContextMenu={(e) => e.preventDefault()}
+                        className="w-full h-full object-cover object-top transition-transform duration-500 hover:scale-110" 
+                      />
+                      {/* Physical click shield to prevent copying */}
+                      <div className="absolute inset-0 bg-transparent z-10 select-none" onContextMenu={(e) => e.preventDefault()} />
+                    </div>
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400">
                       <User size={48} />
@@ -137,7 +161,16 @@ export default function FullProfileModal({ member, isOpen, onClose }) {
                         activeImage === member.image ? 'border-primary scale-105 shadow-sm' : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
-                      <img src={member.image} alt="Main thumbnail" className="w-full h-full object-cover object-top" />
+                      <div className="w-full h-full relative select-none">
+                        <img 
+                          src={member.image} 
+                          alt="Main thumbnail" 
+                          draggable={false}
+                          onContextMenu={(e) => e.preventDefault()}
+                          className="w-full h-full object-cover object-top" 
+                        />
+                        <div className="absolute inset-0 bg-transparent z-10 select-none" onContextMenu={(e) => e.preventDefault()} />
+                      </div>
                     </button>
                   )}
                   {member.additionalImages.map((img, idx) => (
@@ -148,7 +181,16 @@ export default function FullProfileModal({ member, isOpen, onClose }) {
                         activeImage === img ? 'border-primary scale-105 shadow-sm' : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
-                      <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover object-top" />
+                      <div className="w-full h-full relative select-none">
+                        <img 
+                          src={img} 
+                          alt={`Thumbnail ${idx + 1}`} 
+                          draggable={false}
+                          onContextMenu={(e) => e.preventDefault()}
+                          className="w-full h-full object-cover object-top" 
+                        />
+                        <div className="absolute inset-0 bg-transparent z-10 select-none" onContextMenu={(e) => e.preventDefault()} />
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -226,20 +268,30 @@ export default function FullProfileModal({ member, isOpen, onClose }) {
               </button>
             )}
 
-            {/* Main Full-Size Image Container */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 15 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              className="relative max-w-[85vw] max-h-[80vh] flex items-center justify-center select-none"
-            >
-              <img
-                src={activeImage}
-                alt="Fullscreen member profile"
-                className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10"
-              />
-            </motion.div>
+             {/* Main Full-Size Image Container */}
+             <motion.div
+               initial={{ opacity: 0, scale: 0.9, y: 15 }}
+               animate={{ opacity: 1, scale: 1, y: 0 }}
+               exit={{ opacity: 0, scale: 0.9, y: 15 }}
+               transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+               className="relative max-w-[85vw] max-h-[80vh] flex items-center justify-center select-none"
+             >
+               <div className={`relative transition-all duration-300 ${!isWindowFocused ? 'blur-3xl opacity-10 scale-95 pointer-events-none' : ''}`}>
+                 <img
+                   src={activeImage}
+                   alt="Fullscreen member profile"
+                   draggable={false}
+                   onContextMenu={(e) => e.preventDefault()}
+                   className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10"
+                 />
+                 
+                 {/* Physical Click / Inspect shield overlay */}
+                 <div className="absolute inset-0 bg-transparent rounded-2xl z-10 select-none" onContextMenu={(e) => e.preventDefault()} />
+                 
+                 {/* Visual Repeating Diagonal Security Watermark */}
+                 <div className="absolute inset-0 watermark-overlay rounded-2xl z-20 select-none pointer-events-none" />
+               </div>
+             </motion.div>
 
             {/* Next Arrow (Only if multiple photos exist) */}
             {allImages.length > 1 && (

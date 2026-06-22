@@ -74,6 +74,14 @@ export default function Hero() {
       localStorage.setItem('userFilter', JSON.stringify({ religion, caste }));
       localStorage.setItem('userProfile', JSON.stringify(data.user));
       
+      // Track CompleteRegistration event in Meta Pixel
+      if (window.fbq) {
+        window.fbq('track', 'CompleteRegistration', {
+          content_name: 'User Sign Up (Hero Quick-Form)',
+          status: data.user.status
+        });
+      }
+      
       navigate('/pending');
     } catch (err) {
       setError(err.message);

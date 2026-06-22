@@ -183,6 +183,16 @@ export default function CheckoutPage() {
             localStorage.removeItem('pendingPlan');
             window.dispatchEvent(new Event('profileUpdated'));
 
+            // Track Purchase event in Meta Pixel
+            if (window.fbq) {
+              window.fbq('track', 'Purchase', {
+                value: total,
+                currency: 'INR',
+                content_name: `${selectedPlan.name} Plan`,
+                content_category: 'Subscription'
+              });
+            }
+
             if (mountedRef.current) setSuccess(true);
           } catch (verifyErr) {
             console.error('Payment verification error:', verifyErr);

@@ -36,6 +36,11 @@ export default function Contact() {
       if (res.ok) {
         setStatus({ type: 'success', message: 'Your message has been sent successfully! We will get back to you soon.' });
         setFormData({ firstName: '', lastName: '', email: '', message: '' });
+        
+        // Track Contact event in Meta Pixel
+        if (window.fbq) {
+          window.fbq('track', 'Contact');
+        }
       } else {
         setStatus({ type: 'error', message: data.message || 'Failed to send message.' });
       }

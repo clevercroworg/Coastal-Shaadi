@@ -98,6 +98,14 @@ export default function LoginPage() {
         localStorage.setItem('userProfile', JSON.stringify(data.user));
         // Notify MemberContext to recognize the newly registered user profile
         window.dispatchEvent(new Event('userLogin'));
+
+        // Track CompleteRegistration event in Meta Pixel
+        if (window.fbq) {
+          window.fbq('track', 'CompleteRegistration', {
+            content_name: 'User Sign Up',
+            status: data.user.status
+          });
+        }
         
         // After registration, always go to pending (pendingPlan stays in localStorage)
         if (data.user.status === 'pending' || data.user.status === 'rejected') {

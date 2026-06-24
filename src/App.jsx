@@ -23,6 +23,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import PendingPage from './pages/PendingPage';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
+import RefundPolicy from './pages/RefundPolicy';
 import CheckoutPage from './pages/CheckoutPage';
 
 // Context
@@ -83,6 +84,7 @@ const AppContent = () => {
           <Route path="/pending" element={<PendingPage />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />
+          <Route path="/refund-policy" element={<RefundPolicy />} />
 
           {/* Admin Routes */}
           <Route path="/admin/login" element={<AdminLogin />} />

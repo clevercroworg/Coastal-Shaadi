@@ -80,13 +80,21 @@ export default function Footer() {
         </div>
 
         {/* Navigation Links */}
-        <div className="flex flex-wrap justify-center items-center gap-x-10 gap-y-4 mb-16">
-          <Link to="/pricing" className="text-gray-400 hover:text-accent text-sm font-semibold tracking-widest uppercase transition-colors">
+        <div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-4 mb-16">
+          <Link to="/pricing" className="text-gray-400 hover:text-accent text-xs sm:text-sm font-semibold tracking-widest uppercase transition-colors">
             Pricing
           </Link>
           <div className="w-1.5 h-1.5 rounded-full bg-white/20 hidden sm:block" />
-          <Link to="/privacy" className="text-gray-400 hover:text-accent text-sm font-semibold tracking-widest uppercase transition-colors">
+          <Link to="/terms" className="text-gray-400 hover:text-accent text-xs sm:text-sm font-semibold tracking-widest uppercase transition-colors">
+            Terms of Service
+          </Link>
+          <div className="w-1.5 h-1.5 rounded-full bg-white/20 hidden sm:block" />
+          <Link to="/privacy" className="text-gray-400 hover:text-accent text-xs sm:text-sm font-semibold tracking-widest uppercase transition-colors">
             Privacy Policy
+          </Link>
+          <div className="w-1.5 h-1.5 rounded-full bg-white/20 hidden sm:block" />
+          <Link to="/refund-policy" className="text-gray-400 hover:text-accent text-xs sm:text-sm font-semibold tracking-widest uppercase transition-colors">
+            Refund Policy
           </Link>
         </div>
 

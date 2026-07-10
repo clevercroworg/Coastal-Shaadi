@@ -51,12 +51,19 @@ const planData = {
   }
 };
 
+const planRedirectUrls = {
+  basic: 'https://rzp.io/rzp/basic-membership',
+  premium: 'https://rzp.io/rzp/sicV0OdM',
+  elite: 'https://rzp.io/rzp/Xy6a0Dux'
+};
+
 export default function CheckoutPage() {
   const { plan } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('online');
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -110,115 +117,24 @@ export default function CheckoutPage() {
       const userId = userProfile.id || userProfile._id || userProfile.memberId;
       if (!userId) throw new Error('User ID not found');
 
-      // Step 1: Create Razorpay order on the server
-      const orderRes = await fetch('/api/razorpay/create-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, plan })
-      });
-
-      if (!orderRes.ok) {
-        const errData = await orderRes.json().catch(() => ({ message: 'Unknown error' }));
-        throw new Error(errData.message || 'Failed to create order');
+      if (paymentMethod === 'online') {
+        const redirectUrl = planRedirectUrls[plan?.toLowerCase()];
+        if (redirectUrl) {
+          window.location.href = redirectUrl;
+        } else {
+          throw new Error('Invalid plan selected');
+        }
+      } else if (paymentMethod === 'manual') {
+        const whatsappUrl = `https://wa.me/918861002191?text=${encodeURIComponent(
+          `Hi Coastal Shaadi, I want to purchase the ${selectedPlan.name} membership (₹${(selectedPlan.price + selectedPlan.gst).toLocaleString()}) via Bank Transfer. My Member ID is ${userProfile.memberId || 'N/A'}.`
+        )}`;
+        window.open(whatsappUrl, '_blank');
+        setLoading(false);
       }
-
-      const orderData = await orderRes.json();
-
-      // Step 2: Open Razorpay Checkout popup
-      const options = {
-        key: orderData.keyId,
-        amount: orderData.amount,
-        currency: orderData.currency,
-        name: 'Coastal Shaadi',
-        description: `${orderData.planName} Plan – ${orderData.planDuration}`,
-        order_id: orderData.orderId,
-        prefill: {
-          name: `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim(),
-          email: userProfile.email || '',
-          contact: userProfile.phone || userProfile.profileData?.phone || ''
-        },
-        theme: {
-          color: selectedPlan.color === 'amber' ? '#d97706' :
-                 selectedPlan.color === 'purple' ? '#9333ea' : '#2563eb'
-        },
-        modal: {
-          ondismiss: () => {
-            if (mountedRef.current) {
-              setLoading(false);
-              setError('Payment was cancelled. You can try again anytime.');
-            }
-          }
-        },
-        handler: async (response) => {
-          // Step 3: Verify payment on server
-          try {
-            const verifyRes = await fetch('/api/razorpay/verify-payment', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                userId,
-                plan
-              })
-            });
-
-            if (!verifyRes.ok) {
-              const errData = await verifyRes.json().catch(() => ({ message: 'Verification failed' }));
-              throw new Error(errData.message || 'Payment verification failed');
-            }
-
-            const data = await verifyRes.json();
-
-            // Update local storage so the UI reflects the new membership immediately
-            const updatedProfile = {
-              ...userProfile,
-              memberType: data.user.memberType,
-              planExpiry: data.user.planExpiry
-            };
-            localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
-            // Clear pendingPlan since purchase is complete
-            localStorage.removeItem('pendingPlan');
-            window.dispatchEvent(new Event('profileUpdated'));
-
-            // Track Purchase event in Meta Pixel
-            if (window.fbq) {
-              window.fbq('track', 'Purchase', {
-                value: total,
-                currency: 'INR',
-                content_name: `${selectedPlan.name} Plan`,
-                content_category: 'Subscription'
-              });
-            }
-
-            if (mountedRef.current) setSuccess(true);
-          } catch (verifyErr) {
-            console.error('Payment verification error:', verifyErr);
-            if (mountedRef.current) {
-              setError(verifyErr.message || 'Payment was received but verification failed. Please contact support.');
-            }
-          } finally {
-            if (mountedRef.current) setLoading(false);
-          }
-        }
-      };
-
-      const razorpay = new window.Razorpay(options);
-
-      razorpay.on('payment.failed', (response) => {
-        console.error('Razorpay payment failed:', response.error);
-        if (mountedRef.current) {
-          setLoading(false);
-          setError(response.error?.description || 'Payment failed. Please try again or use a different payment method.');
-        }
-      });
-
-      razorpay.open();
     } catch (err) {
       console.error('Payment error:', err);
       if (mountedRef.current) {
-        setError(err.message || 'Something went wrong. Please try again or contact support.');
+        setError(err.message || 'Something went wrong. Please try again.');
         setLoading(false);
       }
     }
@@ -340,8 +256,17 @@ export default function CheckoutPage() {
               </h3>
               
               <div className="space-y-3">
-                <label className="flex items-center gap-4 p-4 rounded-xl border-2 border-primary bg-primary/5 cursor-pointer">
-                  <input type="radio" name="payment" defaultChecked className="w-4 h-4 text-primary accent-primary" />
+                <label className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  paymentMethod === 'online' ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'
+                }`}>
+                  <input 
+                    type="radio" 
+                    name="payment" 
+                    value="online"
+                    checked={paymentMethod === 'online'}
+                    onChange={() => setPaymentMethod('online')}
+                    className="w-4 h-4 text-primary accent-primary" 
+                  />
                   <div className="flex-1">
                     <span className="font-semibold text-sm text-gray-900">UPI / Net Banking / Cards</span>
                     <p className="text-xs text-gray-500 mt-0.5">Pay securely via Razorpay</p>
@@ -352,14 +277,39 @@ export default function CheckoutPage() {
                   </div>
                 </label>
 
-                <label className="flex items-center gap-4 p-4 rounded-xl border-2 border-gray-200 cursor-pointer hover:border-gray-300 transition-colors">
-                  <input type="radio" name="payment" className="w-4 h-4 text-primary accent-primary" />
+                <label className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  paymentMethod === 'manual' ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'
+                }`}>
+                  <input 
+                    type="radio" 
+                    name="payment" 
+                    value="manual"
+                    checked={paymentMethod === 'manual'}
+                    onChange={() => setPaymentMethod('manual')}
+                    className="w-4 h-4 text-primary accent-primary" 
+                  />
                   <div className="flex-1">
                     <span className="font-semibold text-sm text-gray-900">Bank Transfer (Manual)</span>
-                    <p className="text-xs text-gray-500 mt-0.5">Transfer and share receipt via email</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Transfer and share receipt via WhatsApp / Email</p>
                   </div>
                   <Phone size={18} className="text-gray-400" />
                 </label>
+
+                {paymentMethod === 'manual' && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-4 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-800 leading-relaxed mt-3"
+                  >
+                    <p className="font-semibold mb-1">How to complete Manual Bank Transfer:</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>Click "Proceed to Pay" below to start a WhatsApp chat with our team.</li>
+                      <li>We will provide you with the bank account details.</li>
+                      <li>Make the transfer and share the screenshot/receipt of payment.</li>
+                      <li>Our team will manually verify and activate your membership immediately.</li>
+                    </ul>
+                  </motion.div>
+                )}
               </div>
             </div>
 

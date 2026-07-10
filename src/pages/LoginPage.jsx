@@ -355,7 +355,7 @@ export default function LoginPage() {
                   onChange={(e) => !isRegister && setRememberMe(e.target.checked)}
                 />
                 {isRegister ? (
-                  <span>By signing up you agree to our <Link to="/terms" className="text-accent hover:underline">terms and conditions.</Link></span>
+                  <span>By signing up you agree to our <Link to="/terms" className="text-accent hover:underline">Terms of Service</Link> and <Link to="/privacy" className="text-accent hover:underline">Privacy Policy</Link>.</span>
                 ) : (
                   "Remember me"
                 )}

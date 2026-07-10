@@ -319,7 +319,7 @@ export default function CheckoutPage() {
               <label className="flex items-start gap-3 cursor-pointer">
                 <input type="checkbox" defaultChecked className="mt-1 w-4 h-4 accent-primary rounded" />
                 <span className="text-sm text-gray-600 leading-relaxed">
-                  I agree to the <Link to="/terms" className="text-primary hover:underline font-medium">Terms of Service</Link> and <Link to="/privacy" className="text-primary hover:underline font-medium">Privacy Policy</Link>. I understand that my subscription will be activated after payment confirmation.
+                  I agree to the <Link to="/terms" className="text-primary hover:underline font-medium">Terms of Service</Link>, <Link to="/privacy" className="text-primary hover:underline font-medium">Privacy Policy</Link>, and <Link to="/refund-policy" className="text-primary hover:underline font-medium">Refund Policy</Link>. I understand that my subscription will be activated after payment confirmation.
                 </span>
               </label>
             </div>

@@ -296,20 +296,20 @@ export default function PrivacyPolicy() {
                 <div className="bg-canvas border border-accent/20 rounded-2xl p-6 space-y-4">
                   <div className="grid sm:grid-cols-2 gap-4 text-sm text-gray-600">
                     <div>
-                      <span className="text-gray-400 block text-xs uppercase tracking-wider font-semibold">Officer Name</span>
-                      <strong className="text-gray-900 text-base font-serif">Natesh Kunder</strong>
+                      <span className="text-gray-400 block text-xs uppercase tracking-wider font-semibold">Officer Designation</span>
+                      <strong className="text-gray-900 text-base font-serif">Grievance & Compliance Desk</strong>
                     </div>
                     <div>
                       <span className="text-gray-400 block text-xs uppercase tracking-wider font-semibold">Email Address</span>
-                      <a href="mailto:nateshkunder@gmail.com" className="text-primary font-bold hover:underline text-base">nateshkunder@gmail.com</a>
-                    </div>
-                    <div>
-                      <span className="text-gray-400 block text-xs uppercase tracking-wider font-semibold">Phone Number</span>
-                      <a href="tel:+918861002191" className="text-primary font-bold hover:underline text-base">+91 88610 02191</a>
+                      <a href="mailto:support@coastalshaadi.com" className="text-primary font-bold hover:underline text-base">support@coastalshaadi.com</a>
                     </div>
                     <div>
                       <span className="text-gray-400 block text-xs uppercase tracking-wider font-semibold">Office Address</span>
-                      <strong className="text-gray-900 text-base font-serif">Brahmavar, Udupi, Karnataka</strong>
+                      <strong className="text-gray-900 text-base font-serif">Brahmavar, Udupi, Karnataka, India</strong>
+                    </div>
+                    <div>
+                      <span className="text-gray-400 block text-xs uppercase tracking-wider font-semibold">Official Website</span>
+                      <a href="https://coastalshaadi.com" target="_blank" rel="noopener noreferrer" className="text-primary font-bold hover:underline text-base">coastalshaadi.com</a>
                     </div>
                   </div>
                 </div>

@@ -58,6 +58,7 @@ const plans = [
     features: [
       "Unlimited connects",
       "Unlimited chats & calls",
+      "WhatsApp connectivity",
       "Top Match boost in Udupi-Mangalore",
       "Profile badges (Elite User)"
     ],

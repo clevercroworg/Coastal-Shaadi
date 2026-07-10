@@ -16,7 +16,7 @@ export default function Home() {
       <WelcomeSection />
       <WhyChooseUs />
       <HowItWorks />
-      {/* <ShowcaseProfiles /> */}
+      <ShowcaseProfiles />
       <TrustedBrand />
       <TrustStats />
       <Testimonials />

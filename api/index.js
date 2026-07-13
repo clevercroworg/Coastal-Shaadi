@@ -581,8 +581,6 @@ app.get('/api/profile/:id', async (req, res) => {
   }
 });
 
-import crypto from 'crypto';
-
 app.get('/api/cloudinary-signature', (req, res) => {
   const timestamp = Math.round(new Date().getTime() / 1000);
   const apiSecret = CLOUDINARY_API_SECRET;

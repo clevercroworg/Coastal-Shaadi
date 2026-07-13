@@ -1,16 +1,85 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, XCircle, Search, User as UserIcon, LogOut, ShieldCheck, Crown, Trash2 } from 'lucide-react';
+import { CheckCircle, XCircle, Search, User as UserIcon, LogOut, ShieldCheck, Crown, Trash2, Eye } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
+import FullProfileModal from '../components/FullProfileModal';
 
 export default function AdminDashboard() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedUser, setSelectedUser] = useState(null);
   const navigate = useNavigate();
   const { showToast } = useToast();
+
+  const mapUserToMember = (user) => {
+    if (!user) return null;
+    const calculateAge = (dobString) => {
+      if (!dobString) return '-';
+      const birthDate = new Date(dobString);
+      if (isNaN(birthDate.getTime())) return '-';
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const m = today.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      return age;
+    };
+
+    return {
+      id: user.memberId || user._id,
+      memberId: user.memberId,
+      name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'N/A',
+      type: user.memberType || 'Free',
+      age: calculateAge(user.dob) !== '-' ? calculateAge(user.dob) : (user.profileData?.age || '-'),
+      height: user.profileData?.height || '-',
+      gender: user.gender || '-',
+      religion: user.religion || '-',
+      caste: user.caste || '-',
+      subCaste: user.profileData?.subCaste || '-',
+      language: user.profileData?.motherTongue || '-',
+      maritalStatus: user.profileData?.maritalStatus || '-',
+      profession: user.profileData?.profession || '-',
+      country: user.profileData?.country || '-',
+      state: user.profileData?.state || '-',
+      city: user.profileData?.city || '-',
+      location: [user.profileData?.city, user.profileData?.state, user.profileData?.country].filter(l => l && l !== '-').join(', ') || '-',
+      image: user.image || null,
+      additionalImages: user.additionalImages || [],
+      whatsappConsent: user.whatsappConsent || false,
+      whatsappNumber: user.whatsappNumber || '',
+    };
+  };
+
+  const handlePlanChange = async (userId, newPlan) => {
+    try {
+      const token = localStorage.getItem('token');
+      let planExpiry = null;
+      if (newPlan !== 'Free') {
+        const date = new Date();
+        if (newPlan === 'Basic') date.setMonth(date.getMonth() + 3);
+        else if (newPlan === 'Premium') date.setMonth(date.getMonth() + 6);
+        else if (newPlan === 'Elite') date.setFullYear(date.getFullYear() + 1);
+        planExpiry = date.toISOString();
+      }
+
+      const res = await fetch(`/api/admin/users/${userId}/plan`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ memberType: newPlan, planExpiry })
+      });
+      if (!res.ok) throw new Error('Failed to update plan');
+      
+      const updatedUser = await res.json();
+      setUsers(users.map(u => u._id === userId ? { ...u, memberType: updatedUser.memberType, planExpiry: updatedUser.planExpiry } : u));
+      showToast(`User plan updated to ${newPlan}`, 'success');
+    } catch (err) {
+      showToast('Failed to update plan. Please try again.', 'error');
+    }
+  };
 
   useEffect(() => {
     const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
@@ -204,15 +273,21 @@ export default function AdminDashboard() {
                         <div className="text-xs text-gray-500">{user.gender || 'N/A'}, {user.dob || 'N/A'} (For: {user.onBehalf || 'Self'})</div>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border ${
-                          user.memberType === 'Elite' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                          user.memberType === 'Premium' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                          user.memberType === 'Basic' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                          'bg-gray-50 text-gray-600 border-gray-200'
-                        }`}>
-                          {user.memberType === 'Elite' && <Crown size={12} />}
-                          {user.memberType || 'Free'}
-                        </span>
+                        <select
+                          value={user.memberType || 'Free'}
+                          onChange={(e) => handlePlanChange(user._id, e.target.value)}
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold border outline-none cursor-pointer transition-all bg-white ${
+                            user.memberType === 'Elite' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                            user.memberType === 'Premium' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                            user.memberType === 'Basic' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                            'bg-gray-50 text-gray-600 border-gray-200'
+                          }`}
+                        >
+                          <option value="Free">Free</option>
+                          <option value="Basic">Basic</option>
+                          <option value="Premium">Premium</option>
+                          <option value="Elite">Elite</option>
+                        </select>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
                         {new Date(user.createdAt).toLocaleDateString()}
@@ -228,6 +303,13 @@ export default function AdminDashboard() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-center gap-2">
+                          <button 
+                            onClick={() => setSelectedUser(user)}
+                            className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                            title="View Profile"
+                          >
+                            <Eye size={18} />
+                          </button>
                           {user.status !== 'approved' && (
                             <button 
                               onClick={() => handleStatusChange(user._id, 'approved')}
@@ -263,6 +345,12 @@ export default function AdminDashboard() {
           </div>
         </div>
       </main>
+
+      <FullProfileModal
+        isOpen={!!selectedUser}
+        member={selectedUser ? mapUserToMember(selectedUser) : null}
+        onClose={() => setSelectedUser(null)}
+      />
     </div>
   );
 }

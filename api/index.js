@@ -13,6 +13,7 @@ import Conversation from './models/Conversation.js';
 import Message from './models/Message.js';
 import Connection from './models/Connection.js';
 import { sendPendingEmail, sendApprovalEmail, sendRejectionEmail, sendAdminNotificationEmail, sendOtpEmail, sendContactEmail, sendPaymentSuccessUserEmail, sendPaymentSuccessAdminEmail } from './utils/email.js';
+import crypto from 'crypto';
 
 // Utility to enforce plan expiry
 const enforcePlanExpiry = async (user) => {
@@ -165,7 +166,20 @@ app.post('/api/register', async (req, res) => {
   try {
     const { firstName, lastName, email, phone, password, gender, dob, onBehalf, religion, caste } = req.body;
     
-    let user = await User.findOne({ $or: [{ email }, { phone }] });
+    // Normalize and clean inputs to prevent duplicate registrations
+    const normalizedEmail = (email || '').toLowerCase().trim();
+    const cleanedPhone = (phone || '').replace(/\D/g, '');
+    const normalizedPhone = cleanedPhone.length >= 10 ? cleanedPhone.slice(-10) : cleanedPhone;
+
+    const emailRegex = new RegExp('^' + normalizedEmail.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i');
+    const phoneRegex = new RegExp(normalizedPhone + '$');
+
+    let user = await User.findOne({ 
+      $or: [
+        { email: emailRegex }, 
+        { phone: phoneRegex }
+      ] 
+    });
     if (user) {
       return res.status(400).json({ message: 'User with this email or phone already exists' });
     }
@@ -219,7 +233,10 @@ app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    let user = await User.findOne({ email });
+    const normalizedEmail = (email || '').toLowerCase().trim();
+    const emailRegex = new RegExp('^' + normalizedEmail.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i');
+
+    let user = await User.findOne({ email: emailRegex });
     if (!user) {
       return res.status(400).json({ message: 'No account found with this email address. Please register.' });
     }
@@ -450,6 +467,104 @@ app.post('/api/razorpay/verify-payment', async (req, res) => {
   }
 });
 
+// Razorpay Webhook for automatic membership upgrades on hosted payment capture
+app.post('/api/razorpay/webhook', async (req, res) => {
+  try {
+    const signature = req.headers['x-razorpay-signature'];
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+
+    if (webhookSecret && signature) {
+      const shasum = crypto.createHmac('sha256', webhookSecret);
+      shasum.update(JSON.stringify(req.body));
+      const digest = shasum.digest('hex');
+      if (digest !== signature) {
+        console.error('❌ RAZORPAY WEBHOOK SIGNATURE INVALID');
+        return res.status(400).json({ message: 'Invalid signature' });
+      }
+    }
+
+    const event = req.body.event;
+    console.log(`=== RAZORPAY WEBHOOK EVENT: ${event} ===`);
+
+    if (event === 'payment.captured') {
+      const payment = req.body.payload.payment.entity;
+      const amount = payment.amount; // in paise
+      const email = payment.email;
+      const phone = payment.contact; // contact is the phone number
+
+      console.log(`Payment Captured: Email: ${email}, Phone: ${phone}, Amount: ${amount}`);
+
+      // Map amount to plan
+      let planName = '';
+      let months = 0;
+
+      // Check both with-GST and without-GST amounts
+      if (amount === 235900 || amount === 199900) {
+        planName = 'Basic';
+        months = 3;
+      } else if (amount === 412900 || amount === 349900) {
+        planName = 'Premium';
+        months = 6;
+      } else if (amount === 707900 || amount === 599900) {
+        planName = 'Elite';
+        months = 12;
+      }
+
+      if (!planName) {
+        console.warn(`⚠️ Unknown payment amount: ${amount}`);
+        return res.status(200).json({ message: 'Unknown plan amount' });
+      }
+
+      // Try to find user by email or phone
+      let user = null;
+      if (email) {
+        user = await User.findOne({ email: { $regex: new RegExp('^' + email.trim() + '$', 'i') } });
+      }
+      if (!user && phone) {
+        const normalizedPhone = phone.replace(/\D/g, '').slice(-10);
+        user = await User.findOne({ phone: { $regex: new RegExp(normalizedPhone + '$') } });
+      }
+
+      if (!user) {
+        console.warn(`⚠️ User not found for payment. Email: ${email}, Phone: ${phone}`);
+        return res.status(200).json({ message: 'User not found' });
+      }
+
+      // Update plan
+      const planExpiry = new Date();
+      planExpiry.setMonth(planExpiry.getMonth() + months);
+
+      const updatedUser = await User.findOneAndUpdate(
+        { _id: user._id },
+        {
+          memberType: planName,
+          planExpiry,
+          razorpayPaymentId: payment.id,
+          razorpayOrderId: payment.order_id || null
+        },
+        { new: true }
+      ).select('-password');
+
+      console.log(`✅ WEBHOOK SUCCESS: ${updatedUser.memberId} upgraded to ${planName}`);
+
+      // Send emails
+      try {
+        await Promise.all([
+          sendPaymentSuccessUserEmail(updatedUser.email, updatedUser.firstName, planName, amount / 100, payment.id),
+          sendPaymentSuccessAdminEmail(updatedUser, planName, amount / 100, payment.id)
+        ]);
+      } catch (emailErr) {
+        console.error('Failed to send webhook success emails:', emailErr);
+      }
+    }
+
+    res.status(200).json({ status: 'ok' });
+  } catch (err) {
+    console.error('Webhook error:', err);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 app.get('/api/profile/:id', async (req, res) => {
   try {
     let user;
@@ -642,7 +757,9 @@ app.delete('/api/admin/users/:id', authMiddleware, adminMiddleware, async (req, 
 app.post('/api/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
-    const user = await User.findOne({ email });
+    const normalizedEmail = (email || '').toLowerCase().trim();
+    const emailRegex = new RegExp('^' + normalizedEmail.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i');
+    const user = await User.findOne({ email: emailRegex });
     if (!user) {
       return res.status(404).json({ message: 'User with this email does not exist' });
     }
@@ -668,8 +785,10 @@ app.post('/api/forgot-password', async (req, res) => {
 app.post('/api/verify-otp', async (req, res) => {
   try {
     const { email, otp } = req.body;
+    const normalizedEmail = (email || '').toLowerCase().trim();
+    const emailRegex = new RegExp('^' + normalizedEmail.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i');
     const user = await User.findOne({ 
-      email,
+      email: emailRegex,
       resetOtp: otp,
       resetOtpExpires: { $gt: Date.now() }
     });
@@ -689,8 +808,10 @@ app.post('/api/reset-password', async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
     
+    const normalizedEmail = (email || '').toLowerCase().trim();
+    const emailRegex = new RegExp('^' + normalizedEmail.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i');
     const user = await User.findOne({ 
-      email,
+      email: emailRegex,
       resetOtp: otp,
       resetOtpExpires: { $gt: Date.now() }
     });

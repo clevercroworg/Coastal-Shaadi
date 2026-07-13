@@ -66,7 +66,7 @@ export default function FullProfileModal({ member, isOpen, onClose }) {
   if (!isOpen || !member) return null;
 
   const currentUser = JSON.parse(localStorage.getItem('userProfile') || '{}');
-  const isFreePlan = !currentUser.memberType || currentUser.memberType === 'Free';
+  const isFreePlan = (!currentUser.memberType || currentUser.memberType === 'Free') && currentUser.role !== 'admin';
 
   const viewerName = (currentUser.name || 'MEMBER').toUpperCase();
   const viewerId = currentUser.memberId || currentUser.id || 'SECURE';
@@ -169,7 +169,7 @@ export default function FullProfileModal({ member, isOpen, onClose }) {
                     {isFreePlan ? 'Upgrade to Chat' : 'Message'}
                   </button>
                   
-                  {currentUser.memberType === 'Elite' && member.whatsappConsent && member.whatsappNumber && (
+                  {(currentUser.memberType === 'Elite' || currentUser.role === 'admin') && member.whatsappConsent && member.whatsappNumber && (
                     <a
                       href={`https://wa.me/91${member.whatsappNumber}?text=${encodeURIComponent(`Hi, I found your profile (${member.memberId || member.id}) on Coastal Shaadi and would like to connect.`)}`}
                       target="_blank"

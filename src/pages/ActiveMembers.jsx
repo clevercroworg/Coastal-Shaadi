@@ -17,7 +17,7 @@ export default function ActiveMembers() {
       if (stored) {
         const parsed = JSON.parse(stored);
         religion = parsed.religion || '';
-        caste = parsed.caste || '';
+        caste = religion === 'Christian' ? '' : (parsed.caste || '');
       }
     } catch (e) {}
     

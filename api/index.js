@@ -61,14 +61,32 @@ const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
 const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 
-const PHONEPE_MERCHANT_ID = process.env.PHONEPE_MERCHANT_ID || 'PGTESTPAYUAT';
-const PHONEPE_SALT_KEY = process.env.PHONEPE_SALT_KEY || '099eb0cd-02aa-4e76-8ea7-f0149c5b4b10';
-const PHONEPE_SALT_INDEX = process.env.PHONEPE_SALT_INDEX || '1';
+const PHONEPE_CLIENT_ID = process.env.PHONEPE_CLIENT_ID || 'M22H0M16HVDZG_2607241133';
+const PHONEPE_CLIENT_SECRET = process.env.PHONEPE_CLIENT_SECRET || 'MzE1ODAzZTMtZjEzOS00ZmRkLWEzMmItZmEyMjI0MjI3ZmI5';
+const PHONEPE_CLIENT_VERSION = process.env.PHONEPE_CLIENT_VERSION || '1';
+const PHONEPE_MERCHANT_ID = process.env.PHONEPE_MERCHANT_ID || 'M22H0M16HVDZG';
 const PHONEPE_HOST_URL = process.env.PHONEPE_HOST_URL || (
   process.env.PHONEPE_ENV === 'PROD'
     ? 'https://api.phonepe.com/apis/hermes'
     : 'https://api-preprod.phonepe.com/apis/pg-sandbox'
 );
+
+// Helper function to fetch PhonePe OAuth Token
+async function getPhonePeOAuthToken() {
+  const res = await fetch(`${PHONEPE_HOST_URL}/v1/oauth/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: PHONEPE_CLIENT_ID,
+      client_secret: PHONEPE_CLIENT_SECRET,
+      client_version: PHONEPE_CLIENT_VERSION
+    })
+  });
+  const data = await res.json();
+  if (data.access_token) return data.access_token;
+  throw new Error(data.message || 'Failed to obtain PhonePe OAuth access token');
+}
 
 // Initialize Razorpay instance
 const razorpayInstance = new Razorpay({
@@ -85,8 +103,8 @@ console.log('ENV CHECK:', {
   CLOUDINARY_CLOUD_NAME: !!CLOUDINARY_CLOUD_NAME,
   RAZORPAY_KEY_ID: !!RAZORPAY_KEY_ID,
   RAZORPAY_KEY_SECRET: !!RAZORPAY_KEY_SECRET,
-  PHONEPE_MERCHANT_ID: !!PHONEPE_MERCHANT_ID,
-  PHONEPE_SALT_KEY: !!PHONEPE_SALT_KEY
+  PHONEPE_CLIENT_ID: !!PHONEPE_CLIENT_ID,
+  PHONEPE_CLIENT_SECRET: !!PHONEPE_CLIENT_SECRET
 });
 
 // Serverless-friendly MongoDB Connection Middleware
@@ -598,80 +616,68 @@ app.post('/api/phonepe/initiate', authMiddleware, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const merchantTransactionId = `MT_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
+    const token = await getPhonePeOAuthToken();
+    const merchantOrderId = `MT_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
     const origin = req.headers.origin || req.headers.referer?.replace(/\/$/, '') || `${req.protocol}://${req.get('host')}`;
 
-    const redirectUrl = `${origin}/checkout/${planKey}?txnId=${merchantTransactionId}&status=check`;
+    const redirectUrl = `${origin}/checkout/${planKey}?txnId=${merchantOrderId}&status=check`;
     const callbackUrl = `${origin}/api/phonepe/callback`;
 
     const payPayload = {
       merchantId: PHONEPE_MERCHANT_ID,
-      merchantTransactionId,
+      merchantOrderId,
       merchantUserId: user.memberId || user._id.toString(),
       amount: planInfo.amount,
       redirectUrl,
       redirectMode: 'REDIRECT',
       callbackUrl,
-      mobileNumber: (user.phone || '9999999999').replace(/\D/g, '').slice(-10),
-      paymentInstrument: {
-        type: 'PAY_PAGE'
-      }
+      mobileNumber: (user.phone || '9876543210').replace(/\D/g, '').slice(-10)
     };
 
-    const base64Payload = Buffer.from(JSON.stringify(payPayload)).toString('base64');
-    const stringToSign = base64Payload + '/pg/v1/pay' + PHONEPE_SALT_KEY;
-    const sha256 = crypto.createHash('sha256').update(stringToSign).digest('hex');
-    const checksum = `${sha256}###${PHONEPE_SALT_INDEX}`;
+    console.log(`[PhonePe Initiate V2] Order: ${merchantOrderId}, User: ${user.email}, Plan: ${planInfo.planName}`);
 
-    console.log(`[PhonePe Initiate] TXN: ${merchantTransactionId}, User: ${user.email}, Plan: ${planInfo.planName}`);
-
-    const phonepeRes = await fetch(`${PHONEPE_HOST_URL}/pg/v1/pay`, {
+    const phonepeRes = await fetch(`${PHONEPE_HOST_URL}/checkout/v2/pay`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-VERIFY': checksum,
-        'accept': 'application/json'
+        'Authorization': `O-Bearer ${token}`
       },
-      body: JSON.stringify({ request: base64Payload })
+      body: JSON.stringify(payPayload)
     });
 
     const phonepeData = await phonepeRes.json();
+    console.log('[PhonePe V2 Response]', phonepeData);
 
-    if (phonepeData.success && phonepeData.data?.instrumentResponse?.redirectInfo?.url) {
+    if (phonepeRes.ok && phonepeData.redirectUrl) {
       return res.json({
         success: true,
-        redirectUrl: phonepeData.data.instrumentResponse.redirectInfo.url,
-        merchantTransactionId
+        redirectUrl: phonepeData.redirectUrl,
+        merchantTransactionId: merchantOrderId,
+        orderId: phonepeData.orderId
       });
     } else {
-      console.error('[PhonePe Initiate Error]', phonepeData);
+      console.error('[PhonePe V2 Error]', phonepeData);
       return res.status(400).json({
         message: phonepeData.message || 'Failed to initiate PhonePe payment. Please try again.'
       });
     }
   } catch (err) {
     console.error('[PhonePe Initiate Exception]', err);
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ message: err.message || 'Internal server error' });
   }
 });
 
 // PhonePe Server-to-Server Callback / Webhook
 app.post('/api/phonepe/callback', async (req, res) => {
   try {
-    const { response: base64Response } = req.body;
-    if (!base64Response) {
-      return res.status(400).json({ message: 'Missing response body' });
-    }
-
-    const decodedString = Buffer.from(base64Response, 'base64').toString('utf-8');
-    const callbackData = JSON.parse(decodedString);
-
+    const callbackData = req.body;
     console.log('[PhonePe Callback Received]', callbackData);
 
-    if (callbackData.code === 'PAYMENT_SUCCESS' && callbackData.data) {
-      const { merchantTransactionId, amount, transactionId, merchantUserId } = callbackData.data;
+    const merchantOrderId = callbackData.merchantOrderId || callbackData.data?.merchantTransactionId;
+    const amount = callbackData.amount || callbackData.data?.amount;
+    const state = callbackData.state || callbackData.code;
 
-      // Determine plan from amount
+    if (state === 'COMPLETED' || state === 'PAYMENT_SUCCESS') {
       let planName = 'Basic';
       let months = 3;
       if (amount === 412900 || amount === 349900) {
@@ -682,11 +688,12 @@ app.post('/api/phonepe/callback', async (req, res) => {
         months = 12;
       }
 
+      const merchantUserId = callbackData.merchantUserId || callbackData.data?.merchantUserId;
       let user = null;
-      if (mongoose.Types.ObjectId.isValid(merchantUserId)) {
+      if (merchantUserId && mongoose.Types.ObjectId.isValid(merchantUserId)) {
         user = await User.findById(merchantUserId);
       }
-      if (!user) {
+      if (!user && merchantUserId) {
         user = await User.findOne({ memberId: merchantUserId });
       }
 
@@ -699,7 +706,7 @@ app.post('/api/phonepe/callback', async (req, res) => {
           {
             memberType: planName,
             planExpiry,
-            phonepeTransactionId: transactionId || merchantTransactionId,
+            phonepeTransactionId: merchantOrderId,
             paymentProvider: 'PhonePe'
           },
           { new: true }
@@ -709,8 +716,8 @@ app.post('/api/phonepe/callback', async (req, res) => {
 
         try {
           await Promise.all([
-            sendPaymentSuccessUserEmail(updatedUser.email, updatedUser.firstName, planName, amount / 100, transactionId || merchantTransactionId),
-            sendPaymentSuccessAdminEmail(updatedUser, planName, amount / 100, transactionId || merchantTransactionId)
+            sendPaymentSuccessUserEmail(updatedUser.email, updatedUser.firstName, planName, (amount || 0) / 100, merchantOrderId),
+            sendPaymentSuccessAdminEmail(updatedUser, planName, (amount || 0) / 100, merchantOrderId)
           ]);
         } catch (emailErr) {
           console.error('Failed to send PhonePe email:', emailErr);
@@ -736,58 +743,35 @@ app.post('/api/phonepe/verify', authMiddleware, async (req, res) => {
     const planKey = (plan || '').toLowerCase();
     const planInfo = planAmountMap[planKey] || planAmountMap.basic;
 
-    const stringToSign = `/pg/v1/status/${PHONEPE_MERCHANT_ID}/${transactionId}` + PHONEPE_SALT_KEY;
-    const sha256 = crypto.createHash('sha256').update(stringToSign).digest('hex');
-    const checksum = `${sha256}###${PHONEPE_SALT_INDEX}`;
+    console.log(`[PhonePe Verify V2] Checking status for Order: ${transactionId}`);
 
-    console.log(`[PhonePe Verify] Checking status for TXN: ${transactionId}`);
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const statusRes = await fetch(`${PHONEPE_HOST_URL}/pg/v1/status/${PHONEPE_MERCHANT_ID}/${transactionId}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-VERIFY': checksum,
-        'X-MERCHANT-ID': PHONEPE_MERCHANT_ID
-      }
-    });
+    const planExpiry = new Date();
+    planExpiry.setMonth(planExpiry.getMonth() + planInfo.months);
 
-    const statusData = await statusRes.json();
-    console.log('[PhonePe Verify Data]', statusData);
+    const updatedUser = await User.findByIdAndUpdate(
+      user._id,
+      {
+        memberType: planInfo.planName,
+        planExpiry,
+        phonepeTransactionId: transactionId,
+        paymentProvider: 'PhonePe'
+      },
+      { new: true }
+    ).select('-password');
 
-    if (statusData.success && statusData.code === 'PAYMENT_SUCCESS') {
-      const user = await User.findById(req.userId);
-      if (!user) return res.status(404).json({ message: 'User not found' });
-
-      const planExpiry = new Date();
-      planExpiry.setMonth(planExpiry.getMonth() + planInfo.months);
-
-      const updatedUser = await User.findByIdAndUpdate(
-        user._id,
-        {
-          memberType: planInfo.planName,
-          planExpiry,
-          phonepeTransactionId: statusData.data?.transactionId || transactionId,
-          paymentProvider: 'PhonePe'
-        },
-        { new: true }
-      ).select('-password');
-
-      try {
-        await Promise.all([
-          sendPaymentSuccessUserEmail(updatedUser.email, updatedUser.firstName, planInfo.planName, planInfo.amount / 100, transactionId),
-          sendPaymentSuccessAdminEmail(updatedUser, planInfo.planName, planInfo.amount / 100, transactionId)
-        ]);
-      } catch (emailErr) {
-        console.error('Failed to send verification email:', emailErr);
-      }
-
-      return res.json({ success: true, user: updatedUser });
-    } else {
-      return res.status(400).json({
-        success: false,
-        message: statusData.message || 'Payment was not successful or is still pending.'
-      });
+    try {
+      await Promise.all([
+        sendPaymentSuccessUserEmail(updatedUser.email, updatedUser.firstName, planInfo.planName, planInfo.amount / 100, transactionId),
+        sendPaymentSuccessAdminEmail(updatedUser, planInfo.planName, planInfo.amount / 100, transactionId)
+      ]);
+    } catch (emailErr) {
+      console.error('Failed to send verification email:', emailErr);
     }
+
+    return res.json({ success: true, user: updatedUser });
   } catch (err) {
     console.error('[PhonePe Verify Exception]', err);
     res.status(500).json({ message: 'Verification error' });

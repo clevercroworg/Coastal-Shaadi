@@ -71,7 +71,6 @@ const AppContent = () => {
       <Heartbeat />
 
       {!isAdminRoute && <Navbar />}
-      {!isAdminRoute && <FloatingWhatsApp />}
       <div className="flex-1">
         <Routes>
           <Route path="/" element={<Home />} />

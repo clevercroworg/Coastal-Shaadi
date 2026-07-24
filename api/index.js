@@ -600,7 +600,7 @@ const planAmountMap = {
   elite: { planName: 'Elite', months: 12, amount: 707900 }
 };
 
-// PhonePe Initiate Online Payment
+// PhonePe Initiate Online Payment (Supports PROD PG V1 & UAT PG V2)
 app.post('/api/phonepe/initiate', authMiddleware, async (req, res) => {
   try {
     const { plan } = req.body;
@@ -616,50 +616,109 @@ app.post('/api/phonepe/initiate', authMiddleware, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const token = await getPhonePeOAuthToken();
     const merchantOrderId = `MT_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
     const origin = req.headers.origin || req.headers.referer?.replace(/\/$/, '') || `${req.protocol}://${req.get('host')}`;
 
     const redirectUrl = `${origin}/checkout/${planKey}?txnId=${merchantOrderId}&status=check`;
     const callbackUrl = `${origin}/api/phonepe/callback`;
 
-    const payPayload = {
-      merchantId: PHONEPE_MERCHANT_ID,
-      merchantOrderId,
-      merchantUserId: user.memberId || user._id.toString(),
-      amount: planInfo.amount,
-      redirectUrl,
-      redirectMode: 'REDIRECT',
-      callbackUrl,
-      mobileNumber: (user.phone || '9876543210').replace(/\D/g, '').slice(-10)
-    };
+    const isProd = process.env.PHONEPE_ENV === 'PROD';
 
-    console.log(`[PhonePe Initiate V2] Order: ${merchantOrderId}, User: ${user.email}, Plan: ${planInfo.planName}`);
+    if (isProd) {
+      // Production PG V1 Checksum Signing Flow
+      const saltKey = process.env.PHONEPE_CLIENT_SECRET || process.env.PHONEPE_SALT_KEY || '987bde96-92ce-439d-b88b-abb75ee64116';
+      const saltIndex = process.env.PHONEPE_CLIENT_VERSION || process.env.PHONEPE_SALT_INDEX || '1';
+      const merchantId = process.env.PHONEPE_MERCHANT_ID || 'M22H0M16HVDZG';
+      const hostUrl = process.env.PHONEPE_HOST_URL || 'https://api.phonepe.com/apis/hermes';
 
-    const phonepeRes = await fetch(`${PHONEPE_HOST_URL}/checkout/v2/pay`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `O-Bearer ${token}`
-      },
-      body: JSON.stringify(payPayload)
-    });
-
-    const phonepeData = await phonepeRes.json();
-    console.log('[PhonePe V2 Response]', phonepeData);
-
-    if (phonepeRes.ok && phonepeData.redirectUrl) {
-      return res.json({
-        success: true,
-        redirectUrl: phonepeData.redirectUrl,
+      const payPayload = {
+        merchantId,
         merchantTransactionId: merchantOrderId,
-        orderId: phonepeData.orderId
+        merchantUserId: user.memberId || user._id.toString(),
+        amount: planInfo.amount,
+        redirectUrl,
+        redirectMode: 'REDIRECT',
+        callbackUrl,
+        mobileNumber: (user.phone || '9876543210').replace(/\D/g, '').slice(-10),
+        paymentInstrument: {
+          type: 'PAY_PAGE'
+        }
+      };
+
+      const base64Payload = Buffer.from(JSON.stringify(payPayload)).toString('base64');
+      const stringToSign = base64Payload + '/pg/v1/pay' + saltKey;
+      const sha256 = crypto.createHash('sha256').update(stringToSign).digest('hex');
+      const checksum = `${sha256}###${saltIndex}`;
+
+      console.log(`[PhonePe Prod Initiate] Order: ${merchantOrderId}, User: ${user.email}, Plan: ${planInfo.planName}`);
+
+      const phonepeRes = await fetch(`${hostUrl}/pg/v1/pay`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-VERIFY': checksum,
+          'accept': 'application/json'
+        },
+        body: JSON.stringify({ request: base64Payload })
       });
+
+      const phonepeData = await phonepeRes.json();
+      console.log('[PhonePe Prod Response]', phonepeData);
+
+      if (phonepeData.success && phonepeData.data?.instrumentResponse?.redirectInfo?.url) {
+        return res.json({
+          success: true,
+          redirectUrl: phonepeData.data.instrumentResponse.redirectInfo.url,
+          merchantTransactionId: merchantOrderId
+        });
+      } else {
+        console.error('[PhonePe Prod Error]', phonepeData);
+        return res.status(400).json({
+          message: phonepeData.message || (phonepeData.code === '404' ? 'PhonePe Account Verification Pending. PhonePe team is currently activating your merchant production account.' : 'Failed to initiate PhonePe payment.')
+        });
+      }
     } else {
-      console.error('[PhonePe V2 Error]', phonepeData);
-      return res.status(400).json({
-        message: phonepeData.message || 'Failed to initiate PhonePe payment. Please try again.'
+      // UAT Sandbox PG V2 OAuth Flow
+      const token = await getPhonePeOAuthToken();
+
+      const payPayload = {
+        merchantId: PHONEPE_MERCHANT_ID,
+        merchantOrderId,
+        merchantUserId: user.memberId || user._id.toString(),
+        amount: planInfo.amount,
+        redirectUrl,
+        redirectMode: 'REDIRECT',
+        callbackUrl,
+        mobileNumber: (user.phone || '9876543210').replace(/\D/g, '').slice(-10)
+      };
+
+      console.log(`[PhonePe UAT Initiate V2] Order: ${merchantOrderId}, User: ${user.email}, Plan: ${planInfo.planName}`);
+
+      const phonepeRes = await fetch(`${PHONEPE_HOST_URL}/checkout/v2/pay`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `O-Bearer ${token}`
+        },
+        body: JSON.stringify(payPayload)
       });
+
+      const phonepeData = await phonepeRes.json();
+      console.log('[PhonePe UAT Response]', phonepeData);
+
+      if (phonepeRes.ok && phonepeData.redirectUrl) {
+        return res.json({
+          success: true,
+          redirectUrl: phonepeData.redirectUrl,
+          merchantTransactionId: merchantOrderId,
+          orderId: phonepeData.orderId
+        });
+      } else {
+        console.error('[PhonePe UAT Error]', phonepeData);
+        return res.status(400).json({
+          message: phonepeData.message || 'Failed to initiate PhonePe payment. Please try again.'
+        });
+      }
     }
   } catch (err) {
     console.error('[PhonePe Initiate Exception]', err);

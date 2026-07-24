@@ -64,7 +64,8 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('online');
+  const [paymentMethod, setPaymentMethod] = useState('phonepe');
+  const [verifying, setVerifying] = useState(false);
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -98,6 +99,49 @@ export default function CheckoutPage() {
     }
   }, []);
 
+  // Handle return redirect from PhonePe payment page
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const txnId = urlParams.get('txnId');
+    const statusParam = urlParams.get('status');
+
+    if (txnId && statusParam === 'check') {
+      const verifyPhonePePayment = async () => {
+        setVerifying(true);
+        try {
+          const token = localStorage.getItem('token');
+          const res = await fetch('/api/phonepe/verify', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ transactionId: txnId, plan })
+          });
+
+          const data = await res.json();
+          if (res.ok && data.success) {
+            if (data.user) {
+              const updatedProfile = { ...userProfile, ...data.user };
+              localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
+              window.dispatchEvent(new Event('profileUpdated'));
+            }
+            setSuccess(true);
+          } else {
+            setError(data.message || 'PhonePe payment verification failed or is still pending.');
+          }
+        } catch (err) {
+          console.error('PhonePe verification error:', err);
+          setError('Failed to verify payment status. If your account was debited, your membership will be activated shortly.');
+        } finally {
+          setVerifying(false);
+        }
+      };
+
+      verifyPhonePePayment();
+    }
+  }, [plan]);
+
   if (!selectedPlan) return null;
 
   const total = selectedPlan.price + selectedPlan.gst;
@@ -118,7 +162,24 @@ export default function CheckoutPage() {
       const userId = userProfile.id || userProfile._id || userProfile.memberId;
       if (!userId) throw new Error('User ID not found');
 
-      if (paymentMethod === 'online') {
+      if (paymentMethod === 'phonepe') {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/phonepe/initiate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ plan: plan?.toLowerCase() })
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success || !data.redirectUrl) {
+          throw new Error(data.message || 'Could not initiate PhonePe Payment gateway');
+        }
+
+        window.location.href = data.redirectUrl;
+      } else if (paymentMethod === 'online') {
         const redirectUrl = planRedirectUrls[plan?.toLowerCase()];
         if (redirectUrl) {
           window.location.href = redirectUrl;
@@ -258,6 +319,30 @@ export default function CheckoutPage() {
               
               <div className="space-y-3">
                 <label className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  paymentMethod === 'phonepe' ? 'border-purple-600 bg-purple-50/50' : 'border-gray-200 hover:border-gray-300'
+                }`}>
+                  <input 
+                    type="radio" 
+                    name="payment" 
+                    value="phonepe"
+                    checked={paymentMethod === 'phonepe'}
+                    onChange={() => setPaymentMethod('phonepe')}
+                    className="w-4 h-4 text-purple-600 accent-purple-600" 
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm text-gray-900">PhonePe Payment Gateway</span>
+                      <span className="text-[10px] uppercase tracking-wider font-bold bg-purple-600 text-white px-2 py-0.5 rounded-full">Instant</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">Pay via PhonePe App, UPI, GPay, QR, Credit/Debit Cards & Netbanking</p>
+                  </div>
+                  <div className="flex gap-1.5 items-center">
+                    <div className="px-2 py-1 bg-purple-100 text-purple-700 rounded font-bold text-xs">PhonePe</div>
+                    <div className="w-8 h-5 bg-gray-100 rounded flex items-center justify-center text-[8px] font-bold text-gray-500">UPI</div>
+                  </div>
+                </label>
+
+                <label className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
                   paymentMethod === 'online' ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'
                 }`}>
                   <input 
@@ -269,12 +354,11 @@ export default function CheckoutPage() {
                     className="w-4 h-4 text-primary accent-primary" 
                   />
                   <div className="flex-1">
-                    <span className="font-semibold text-sm text-gray-900">UPI / Net Banking / Cards</span>
-                    <p className="text-xs text-gray-500 mt-0.5">Pay securely via Razorpay</p>
+                    <span className="font-semibold text-sm text-gray-900">Razorpay Pay Link</span>
+                    <p className="text-xs text-gray-500 mt-0.5">Pay via hosted Razorpay links</p>
                   </div>
                   <div className="flex gap-1.5">
                     <div className="w-8 h-5 bg-gray-100 rounded flex items-center justify-center text-[8px] font-bold text-gray-500">VISA</div>
-                    <div className="w-8 h-5 bg-gray-100 rounded flex items-center justify-center text-[8px] font-bold text-gray-500">UPI</div>
                   </div>
                 </label>
 
@@ -397,13 +481,13 @@ export default function CheckoutPage() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={handlePayment}
-                disabled={loading}
-                className="w-full mt-6 py-4 rounded-xl bg-gradient-to-r from-primary to-primary-hover text-white font-bold text-sm shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                disabled={loading || verifying}
+                className="w-full mt-6 py-4 rounded-xl bg-gradient-to-r from-purple-700 via-primary to-primary-hover text-white font-bold text-sm shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                {loading ? (
+                {loading || verifying ? (
                   <>
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Processing...
+                    {verifying ? 'Verifying PhonePe Payment...' : 'Connecting to PhonePe...'}
                   </>
                 ) : (
                   <>
@@ -417,15 +501,15 @@ export default function CheckoutPage() {
               <div className="mt-5 flex items-center justify-center gap-4 text-xs text-gray-400">
                 <div className="flex items-center gap-1">
                   <Shield size={12} />
-                  <span>Secure</span>
+                  <span>256-Bit SSL</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Lock size={12} />
-                  <span>Encrypted</span>
+                  <span>PhonePe PG</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <CreditCard size={12} />
-                  <span>Razorpay</span>
+                  <span>UPI & Cards</span>
                 </div>
               </div>
             </div>

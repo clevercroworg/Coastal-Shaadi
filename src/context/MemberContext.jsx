@@ -137,28 +137,33 @@ export const MemberProvider = ({ children }) => {
   }, []);
 
   // Fetch the latest profile data from server on load to synchronize subscription/approval states
-  useEffect(() => {
-    const syncUserProfile = async () => {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-      try {
-        const response = await fetch('/api/me', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        if (response.ok) {
-          const latestProfile = await response.json();
-          localStorage.setItem('userProfile', JSON.stringify(latestProfile));
-          setUserProfile(latestProfile);
-          window.dispatchEvent(new Event('profileUpdated'));
+  const syncUserProfile = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+      const response = await fetch('/api/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`
         }
-      } catch (error) {
-        console.error("Failed to sync user profile", error);
+      });
+      if (response.ok) {
+        const latestProfile = await response.json();
+        localStorage.setItem('userProfile', JSON.stringify(latestProfile));
+        setUserProfile(latestProfile);
+        window.dispatchEvent(new Event('profileUpdated'));
       }
-    };
-    syncUserProfile();
+    } catch (error) {
+      console.error("Failed to sync user profile", error);
+    }
   }, []);
+
+  useEffect(() => {
+    syncUserProfile();
+    window.addEventListener('focus', syncUserProfile);
+    return () => {
+      window.removeEventListener('focus', syncUserProfile);
+    };
+  }, [syncUserProfile]);
 
   useEffect(() => {
     const fetchMembers = async () => {

@@ -25,14 +25,21 @@ export default class ErrorBoundary extends React.Component {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-canvas flex flex-col items-center justify-center p-6 text-center">
-          <div className="glass-panel p-8 rounded-2xl max-w-md w-full border border-red-100 shadow-xl">
+          <div className="glass-panel p-8 rounded-2xl max-w-lg w-full border border-red-100 shadow-xl">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600 font-bold text-2xl">
               !
             </div>
             <h2 className="text-xl font-serif font-bold text-gray-900 mb-2">Something went wrong</h2>
-            <p className="text-sm text-gray-600 mb-6">
+            <p className="text-sm text-gray-600 mb-4">
               We encountered a temporary display issue. Please click below to refresh and clear cached data.
             </p>
+            {this.state.error && (
+              <div className="bg-red-50 text-red-800 p-3 rounded-lg text-xs font-mono mb-4 text-left overflow-auto max-h-40 border border-red-200">
+                {this.state.error.toString()}
+                <br />
+                {this.state.error.stack}
+              </div>
+            )}
             <button
               onClick={this.handleReload}
               className="w-full bg-primary text-white py-3 rounded-xl font-semibold hover:bg-primary-hover transition-colors shadow-md"

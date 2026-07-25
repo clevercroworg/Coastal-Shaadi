@@ -111,7 +111,8 @@ export const MemberProvider = ({ children }) => {
   const [userProfile, setUserProfile] = useState(() => {
     try {
       const stored = localStorage.getItem('userProfile');
-      return stored ? JSON.parse(stored) : null;
+      if (!stored || stored === 'undefined' || stored === 'null') return null;
+      return JSON.parse(stored);
     } catch(e) { return null; }
   });
 
@@ -120,7 +121,11 @@ export const MemberProvider = ({ children }) => {
     const handleProfileChange = () => {
       try {
         const stored = localStorage.getItem('userProfile');
-        setUserProfile(stored ? JSON.parse(stored) : null);
+        if (!stored || stored === 'undefined' || stored === 'null') {
+          setUserProfile(null);
+          return;
+        }
+        setUserProfile(JSON.parse(stored));
       } catch(e) { setUserProfile(null); }
     };
     window.addEventListener('userLogin', handleProfileChange);

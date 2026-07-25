@@ -84,7 +84,14 @@ export default function Packages() {
 
   // Get current user plan reactively
   const token = localStorage.getItem('token');
-  const storedProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+  let storedProfile = {};
+  try {
+    const raw = localStorage.getItem('userProfile');
+    if (raw && raw !== 'undefined' && raw !== 'null') {
+      storedProfile = JSON.parse(raw) || {};
+    }
+  } catch (e) { storedProfile = {}; }
+
   const userProfile = contextUserProfile || storedProfile;
   const currentPlan = userProfile.memberType || 'Free';
   const isLoggedIn = !!token && !!(userProfile.id || userProfile._id);

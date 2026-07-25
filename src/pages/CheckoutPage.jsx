@@ -82,7 +82,14 @@ export default function CheckoutPage() {
     return () => { mountedRef.current = false; };
   }, []);
 
-  const storedProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+  let storedProfile = {};
+  try {
+    const raw = localStorage.getItem('userProfile');
+    if (raw && raw !== 'undefined' && raw !== 'null') {
+      storedProfile = JSON.parse(raw) || {};
+    }
+  } catch (e) { storedProfile = {}; }
+
   const userProfile = contextUserProfile || storedProfile;
   const selectedPlan = planData[plan?.toLowerCase()];
 

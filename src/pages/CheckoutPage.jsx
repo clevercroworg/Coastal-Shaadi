@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Check, Crown, Sparkles, Zap, Star, ArrowLeft, Shield, Lock, CreditCard, Phone, Mail, User, ChevronRight, X } from 'lucide-react';
+import { useMembers } from '../context/MemberContext';
 
 const planData = {
   basic: {
@@ -53,26 +54,36 @@ const planData = {
 };
 
 const planRedirectUrls = {
-  basic: 'https://rzp.io/rzp/basic-membership',
-  premium: 'https://rzp.io/rzp/sicV0OdM',
-  elite: 'https://rzp.io/rzp/Xy6a0Dux'
+  basic: 'https://razorpay.me/@coastalshaadi/basic',
+  premium: 'https://razorpay.me/@coastalshaadi/premium',
+  elite: 'https://razorpay.me/@coastalshaadi/elite'
 };
 
 export default function CheckoutPage() {
   const { plan } = useParams();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('phonepe');
+  const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(true);
   const mountedRef = useRef(true);
+
+  const { userProfile: contextUserProfile, syncUserProfile } = useMembers() || {};
+
+  useEffect(() => {
+    if (syncUserProfile) {
+      syncUserProfile();
+    }
+  }, [syncUserProfile]);
 
   useEffect(() => {
     return () => { mountedRef.current = false; };
   }, []);
 
-  const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+  const storedProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+  const userProfile = contextUserProfile || storedProfile;
   const selectedPlan = planData[plan?.toLowerCase()];
 
   const planRank = { Free: 0, Basic: 1, Premium: 2, Elite: 3 };
@@ -90,14 +101,14 @@ export default function CheckoutPage() {
       navigate('/pricing');
       return;
     }
-    // Prevent downgrade
+    // Prevent downgrade or equal plan checkout
     const currentRank = planRank[userProfile.memberType || 'Free'];
     const targetRank = planRank[selectedPlan.name];
     if (targetRank <= currentRank) {
       navigate('/pricing');
       return;
     }
-  }, []);
+  }, [userProfile, selectedPlan, navigate]);
 
   // Handle return redirect from PhonePe payment page
   useEffect(() => {

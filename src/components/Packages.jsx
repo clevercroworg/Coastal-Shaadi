@@ -1,8 +1,9 @@
 import { motion, useInView, AnimatePresence } from 'framer-motion';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, Crown, Sparkles, Zap, Star, Clock } from 'lucide-react';
 import { OrnamentDivider, MandalaPattern, FlowerBouquet, FlowerCorner } from './Decorative';
+import { useMembers } from '../context/MemberContext';
 
 const plans = [
   {
@@ -73,9 +74,18 @@ export default function Packages() {
   const navigate = useNavigate();
   const [showApprovalPopup, setShowApprovalPopup] = useState(false);
 
-  // Get current user plan
+  const { userProfile: contextUserProfile, syncUserProfile } = useMembers() || {};
+
+  useEffect(() => {
+    if (syncUserProfile) {
+      syncUserProfile();
+    }
+  }, [syncUserProfile]);
+
+  // Get current user plan reactively
   const token = localStorage.getItem('token');
-  const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+  const storedProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+  const userProfile = contextUserProfile || storedProfile;
   const currentPlan = userProfile.memberType || 'Free';
   const isLoggedIn = !!token && !!(userProfile.id || userProfile._id);
   const isApproved = userProfile.status === 'approved';

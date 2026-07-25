@@ -210,7 +210,7 @@ export const MemberProvider = ({ children }) => {
               state: user.profileData?.state || '-',
               city: user.profileData?.city || '-',
               location: [user.profileData?.city, user.profileData?.state, user.profileData?.country].filter(l => l && l !== '-').join(', ') || '-',
-               image: user.image || null,
+              image: user.image || null,
               additionalImages: user.additionalImages || [],
               whatsappConsent: user.whatsappConsent || false,
               whatsappNumber: user.whatsappNumber || '',
@@ -227,46 +227,102 @@ export const MemberProvider = ({ children }) => {
     };
 
     fetchMembers();
-  }, [userProfile]);
+  }, []);
 
-  const toggleShortlist = (id) => {
-    setShortlistedIds(prev => {
-      const next = prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id];
-      localStorage.setItem('shortlistedIds', JSON.stringify(next));
-      return next;
-    });
-  };
+  // Sync interactions with backend
+  useEffect(() => {
+    const syncInteractions = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
 
-  const toggleInterest = (id) => {
-    setInterestedIds(prev => {
-      const next = prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id];
-      localStorage.setItem('interestedIds', JSON.stringify(next));
-      return next;
-    });
-  };
-
-  const toggleIgnore = (id) => {
-    setIgnoredIds(prev => {
-      if (prev.includes(id)) {
-        const next = prev.filter(i => i !== id);
-        localStorage.setItem('ignoredIds', JSON.stringify(next));
-        return next;
-      } else {
-        setShortlistedIds(s => {
-          const ns = s.filter(i => i !== id);
-          localStorage.setItem('shortlistedIds', JSON.stringify(ns));
-          return ns;
+      try {
+        const response = await fetch('/api/user/interactions', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
         });
-        setInterestedIds(inIds => {
-          const ni = inIds.filter(i => i !== id);
-          localStorage.setItem('interestedIds', JSON.stringify(ni));
-          return ni;
-        });
-        const next = [...prev, id];
-        localStorage.setItem('ignoredIds', JSON.stringify(next));
-        return next;
+
+        if (response.ok) {
+          const data = await response.json();
+          setShortlistedIds(data.shortlistedIds || []);
+          setInterestedIds(data.interestedIds || []);
+          setIgnoredIds(data.ignoredIds || []);
+        }
+      } catch (error) {
+        console.error("Failed to sync interactions", error);
       }
-    });
+    };
+
+    syncInteractions();
+  }, []);
+
+  const toggleShortlist = async (id) => {
+    const isShortlisted = shortlistedIds.includes(id);
+    const newShortlist = isShortlisted
+      ? shortlistedIds.filter(item => item !== id)
+      : [...shortlistedIds, id];
+    
+    setShortlistedIds(newShortlist);
+
+    try {
+      const token = localStorage.getItem('token');
+      await fetch('/api/user/shortlist', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ targetUserId: id, action: isShortlisted ? 'remove' : 'add' })
+      });
+    } catch (err) {
+      console.error("Failed to save shortlist", err);
+    }
+  };
+
+  const toggleInterest = async (id) => {
+    const isInterested = interestedIds.includes(id);
+    const newInterest = isInterested
+      ? interestedIds.filter(item => item !== id)
+      : [...interestedIds, id];
+    
+    setInterestedIds(newInterest);
+
+    try {
+      const token = localStorage.getItem('token');
+      await fetch('/api/user/interest', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ targetUserId: id, action: isInterested ? 'remove' : 'add' })
+      });
+    } catch (err) {
+      console.error("Failed to save interest", err);
+    }
+  };
+
+  const toggleIgnore = async (id) => {
+    const isIgnored = ignoredIds.includes(id);
+    const newIgnore = isIgnored
+      ? ignoredIds.filter(item => item !== id)
+      : [...ignoredIds, id];
+    
+    setIgnoredIds(newIgnore);
+
+    try {
+      const token = localStorage.getItem('token');
+      await fetch('/api/user/ignore', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ targetUserId: id, action: isIgnored ? 'remove' : 'add' })
+      });
+    } catch (err) {
+      console.error("Failed to save ignore", err);
+    }
   };
 
   // Dynamically filter members based on logged-in user (memoized)
@@ -295,6 +351,8 @@ export const MemberProvider = ({ children }) => {
 
   return (
     <MemberContext.Provider value={{
+      userProfile,
+      syncUserProfile,
       members: filteredMembers,
       shortlistedIds,
       interestedIds,

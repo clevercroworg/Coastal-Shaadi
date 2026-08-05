@@ -132,15 +132,22 @@ app.use(connectDB);
 
 // Health check endpoint for debugging
 app.get('/api/health', (req, res) => {
+  const rzpId = process.env.RAZORPAY_KEY_ID || '';
+  const rzpSecret = process.env.RAZORPAY_KEY_SECRET || '';
   res.json({
     status: 'ok',
-    mongoState: mongoose.connection.readyState, // 0=disconnected, 1=connected, 2=connecting
+    mongoState: mongoose.connection.readyState,
+    razorpay: {
+      keyIdPrefix: rzpId ? rzpId.substring(0, 14) : 'MISSING',
+      keyIdLength: rzpId.trim().length,
+      keySecretLength: rzpSecret.trim().length,
+      isLiveKey: rzpId.startsWith('rzp_live_')
+    },
     envVars: {
-      MONGODB_URI: !!MONGODB_URI,
-      JWT_SECRET: !!JWT_SECRET,
-      CLOUDINARY_API_SECRET: !!CLOUDINARY_API_SECRET,
-      CLOUDINARY_API_KEY: !!CLOUDINARY_API_KEY,
-      CLOUDINARY_CLOUD_NAME: !!CLOUDINARY_CLOUD_NAME
+      MONGODB_URI: !!process.env.MONGODB_URI,
+      JWT_SECRET: !!process.env.JWT_SECRET,
+      RAZORPAY_KEY_ID: !!process.env.RAZORPAY_KEY_ID,
+      RAZORPAY_KEY_SECRET: !!process.env.RAZORPAY_KEY_SECRET
     }
   });
 });

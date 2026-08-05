@@ -392,6 +392,14 @@ app.post('/api/razorpay/create-order', async (req, res) => {
     const { userId, plan } = req.body;
     if (!userId || !plan) return res.status(400).json({ message: 'User ID and plan are required' });
 
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+    if (!keyId || !keySecret) {
+      console.error('Razorpay keys missing in environment variables:', { keyId: !!keyId, keySecret: !!keySecret });
+      return res.status(400).json({ message: 'Razorpay payment gateway credentials not configured on server.' });
+    }
+
     const planConfig = razorpayPlanConfig[plan.toLowerCase()];
     if (!planConfig) return res.status(400).json({ message: 'Invalid plan selected' });
 
@@ -407,7 +415,12 @@ app.post('/api/razorpay/create-order', async (req, res) => {
 
     const totalAmount = (planConfig.price + planConfig.gst) * 100; // Convert to paise
 
-    const order = await razorpayInstance.orders.create({
+    const instance = new Razorpay({
+      key_id: keyId.trim(),
+      key_secret: keySecret.trim()
+    });
+
+    const order = await instance.orders.create({
       amount: totalAmount,
       currency: 'INR',
       receipt: `cs_${user.memberId}_${Date.now()}`,
@@ -422,13 +435,14 @@ app.post('/api/razorpay/create-order', async (req, res) => {
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      keyId: RAZORPAY_KEY_ID,
+      keyId: keyId.trim(),
       planName: planConfig.name,
       planDuration: planConfig.duration
     });
   } catch (err) {
     console.error('RAZORPAY CREATE ORDER ERROR:', err);
-    res.status(500).json({ message: 'Failed to create payment order. Please try again.' });
+    const detailMsg = err?.error?.description || err?.message || 'Failed to create payment order.';
+    res.status(500).json({ message: `Razorpay Error: ${detailMsg}` });
   }
 });
 
@@ -441,9 +455,11 @@ app.post('/api/razorpay/verify-payment', async (req, res) => {
       return res.status(400).json({ message: 'Payment verification data is incomplete' });
     }
 
+    const keySecret = (process.env.RAZORPAY_KEY_SECRET || RAZORPAY_KEY_SECRET || '').trim();
+
     // Verify signature using HMAC SHA256
     const expectedSignature = crypto
-      .createHmac('sha256', RAZORPAY_KEY_SECRET)
+      .createHmac('sha256', keySecret)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest('hex');
 

@@ -356,17 +356,10 @@ export default function CheckoutPage() {
                 Payment Method
               </h3>
                    <div className="space-y-3">
-                <label className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                  paymentMethod === 'razorpay' ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'
-                }`}>
-                  <input 
-                    type="radio" 
-                    name="payment" 
-                    value="razorpay"
-                    checked={paymentMethod === 'razorpay'}
-                    onChange={() => setPaymentMethod('razorpay')}
-                    className="w-4 h-4 text-primary accent-primary" 
-                  />
+                <div className="flex items-center gap-4 p-4 rounded-xl border-2 border-primary bg-primary/5">
+                  <div className="w-4 h-4 rounded-full bg-primary flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
+                  </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-sm text-gray-900">Razorpay Payment Gateway</span>
@@ -378,41 +371,7 @@ export default function CheckoutPage() {
                     <div className="px-2 py-1 bg-blue-100 text-blue-800 rounded font-bold text-xs">Razorpay</div>
                     <div className="w-8 h-5 bg-gray-100 rounded flex items-center justify-center text-[8px] font-bold text-gray-500">UPI</div>
                   </div>
-                </label>
-
-                <label className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                  paymentMethod === 'manual' ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'
-                }`}>
-                  <input 
-                    type="radio" 
-                    name="payment" 
-                    value="manual"
-                    checked={paymentMethod === 'manual'}
-                    onChange={() => setPaymentMethod('manual')}
-                    className="w-4 h-4 text-primary accent-primary" 
-                  />
-                  <div className="flex-1">
-                    <span className="font-semibold text-sm text-gray-900">Bank Transfer (Manual)</span>
-                    <p className="text-xs text-gray-500 mt-0.5">Transfer and share receipt via WhatsApp / Email</p>
-                  </div>
-                  <Phone size={18} className="text-gray-400" />
-                </label>
-
-                {paymentMethod === 'manual' && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="p-4 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-800 leading-relaxed mt-3"
-                  >
-                    <p className="font-semibold mb-1">How to complete Manual Bank Transfer:</p>
-                    <ul className="list-disc list-inside space-y-1">
-                      <li>Click "Proceed to Pay" below to start a WhatsApp chat with our team.</li>
-                      <li>We will provide you with the bank account details.</li>
-                      <li>Make the transfer and share the screenshot/receipt of payment.</li>
-                      <li>Our team will manually verify and activate your membership immediately.</li>
-                    </ul>
-                  </motion.div>
-                )}
+                </div>
               </div>
             </div>
 

@@ -54,9 +54,9 @@ const planData = {
 };
 
 const planRedirectUrls = {
-  basic: 'https://razorpay.me/@coastalshaadi/basic',
-  premium: 'https://razorpay.me/@coastalshaadi/premium',
-  elite: 'https://razorpay.me/@coastalshaadi/elite'
+  basic: 'https://rzp.io/rzp/basic-membership',
+  premium: 'https://rzp.io/rzp/sicV0OdM',
+  elite: 'https://rzp.io/rzp/Xy6a0Dux'
 };
 
 export default function CheckoutPage() {
@@ -140,23 +140,27 @@ export default function CheckoutPage() {
       if (paymentMethod === 'razorpay') {
         const token = localStorage.getItem('token');
         
-        // Attempt Razorpay order creation & popup modal
-        const res = await fetch('/api/razorpay/create-order', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ userId, plan: plan?.toLowerCase() })
-        });
+        let data = {};
+        let resOk = false;
 
-        const data = await res.json().catch(() => ({}));
+        try {
+          // Attempt Razorpay order creation & popup modal
+          const res = await fetch('/api/razorpay/create-order', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ userId, plan: plan?.toLowerCase() })
+          });
 
-        if (!res.ok) {
-          throw new Error(data.message || 'Failed to initiate payment. Please try again.');
+          data = await res.json().catch(() => ({}));
+          resOk = res.ok;
+        } catch (apiErr) {
+          console.warn('Razorpay order creation API error, using direct live payment link fallback:', apiErr);
         }
 
-        if (data.orderId && window.Razorpay) {
+        if (resOk && data.orderId && window.Razorpay) {
           const options = {
             key: data.keyId,
             amount: data.amount,
@@ -210,8 +214,16 @@ export default function CheckoutPage() {
           rzp.open();
           setLoading(false);
           return;
+        }
+
+        // Fallback to active live Razorpay Payment Page URL
+        const redirectUrl = planRedirectUrls[plan?.toLowerCase()];
+        if (redirectUrl) {
+          window.location.href = redirectUrl;
+          setLoading(false);
+          return;
         } else {
-          throw new Error('Razorpay payment gateway failed to load. Please refresh and try again.');
+          throw new Error(data.message || 'Failed to initiate payment. Please try again.');
         }
       } else if (paymentMethod === 'manual') {
         const whatsappUrl = `https://wa.me/918861002191?text=${encodeURIComponent(

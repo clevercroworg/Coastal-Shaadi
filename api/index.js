@@ -287,19 +287,25 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-app.put('/api/profile', async (req, res) => {
+app.put('/api/profile', authMiddleware, async (req, res) => {
   try {
     const { userId, profileData, image, additionalImages, whatsappNumber, whatsappConsent } = req.body;
-    if (!userId) return res.status(400).json({ message: 'User ID is required' });
+    const targetUserId = userId || req.userId;
 
     let user;
-    if (mongoose.Types.ObjectId.isValid(userId)) {
-      user = await User.findById(userId);
+    if (mongoose.Types.ObjectId.isValid(targetUserId)) {
+      user = await User.findById(targetUserId);
     } else {
-      user = await User.findOne({ memberId: userId });
+      user = await User.findOne({ memberId: targetUserId });
     }
 
     if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Authorization Check: User can only update their own profile unless admin
+    const requestingUser = await User.findById(req.userId).select('role');
+    if (user._id.toString() !== req.userId && requestingUser?.role !== 'admin') {
+      return res.status(403).json({ message: 'Forbidden: You can only edit your own profile' });
+    }
 
     const updateData = {};
     if (profileData) {
@@ -321,7 +327,7 @@ app.put('/api/profile', async (req, res) => {
     if (whatsappNumber !== undefined) updateData.whatsappNumber = whatsappNumber;
     if (whatsappConsent !== undefined) updateData.whatsappConsent = whatsappConsent;
 
-    const updatedUser = await User.findOneAndUpdate({ _id: user._id }, updateData, { new: true });
+    const updatedUser = await User.findOneAndUpdate({ _id: user._id }, updateData, { new: true }).select('-password');
     res.json({ message: 'Profile updated successfully', user: updatedUser });
   } catch (err) {
     console.error(err);
@@ -329,7 +335,7 @@ app.put('/api/profile', async (req, res) => {
   }
 });
 
-app.post('/api/upgrade', async (req, res) => {
+app.post('/api/upgrade', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const { userId, plan } = req.body;
     if (!userId || !plan) return res.status(400).json({ message: 'User ID and plan are required' });
@@ -353,7 +359,6 @@ app.post('/api/upgrade', async (req, res) => {
 
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // In a real scenario, this would be triggered by a Razorpay/Stripe webhook
     const planExpiry = new Date();
     if (targetMemberType === 'Basic') planExpiry.setMonth(planExpiry.getMonth() + 3);
     else if (targetMemberType === 'Premium') planExpiry.setMonth(planExpiry.getMonth() + 6);
@@ -1038,9 +1043,8 @@ app.post('/api/forgot-password', async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     user.resetOtp = otp;
     user.resetOtpExpires = Date.now() + 15 * 60 * 1000; // 15 mins
+    user.resetOtpAttempts = 0;
     await user.save();
-
-    console.log(`\n\n=== PASSWORD RESET OTP FOR ${email}: ${otp} ===\n\n`);
     
     // Send email with OTP
     await sendOtpEmail(user.email, otp, user.firstName);
@@ -1057,14 +1061,24 @@ app.post('/api/verify-otp', async (req, res) => {
     const { email, otp } = req.body;
     const normalizedEmail = (email || '').toLowerCase().trim();
     const emailRegex = new RegExp('^' + normalizedEmail.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i');
-    const user = await User.findOne({ 
-      email: emailRegex,
-      resetOtp: otp,
-      resetOtpExpires: { $gt: Date.now() }
-    });
+    const user = await User.findOne({ email: emailRegex });
 
-    if (!user) {
+    if (!user || !user.resetOtp || !user.resetOtpExpires || user.resetOtpExpires < Date.now()) {
       return res.status(400).json({ message: 'Invalid or expired OTP' });
+    }
+
+    if (user.resetOtpAttempts >= 3) {
+      user.resetOtp = undefined;
+      user.resetOtpExpires = undefined;
+      user.resetOtpAttempts = 0;
+      await user.save();
+      return res.status(400).json({ message: 'Maximum verification attempts exceeded. Please request a new OTP.' });
+    }
+
+    if (user.resetOtp !== otp) {
+      user.resetOtpAttempts = (user.resetOtpAttempts || 0) + 1;
+      await user.save();
+      return res.status(400).json({ message: 'Invalid OTP' });
     }
 
     res.json({ message: 'OTP verified successfully' });
@@ -1080,20 +1094,31 @@ app.post('/api/reset-password', async (req, res) => {
     
     const normalizedEmail = (email || '').toLowerCase().trim();
     const emailRegex = new RegExp('^' + normalizedEmail.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i');
-    const user = await User.findOne({ 
-      email: emailRegex,
-      resetOtp: otp,
-      resetOtpExpires: { $gt: Date.now() }
-    });
+    const user = await User.findOne({ email: emailRegex });
 
-    if (!user) {
+    if (!user || !user.resetOtp || !user.resetOtpExpires || user.resetOtpExpires < Date.now()) {
       return res.status(400).json({ message: 'Invalid or expired OTP' });
+    }
+
+    if (user.resetOtpAttempts >= 3) {
+      user.resetOtp = undefined;
+      user.resetOtpExpires = undefined;
+      user.resetOtpAttempts = 0;
+      await user.save();
+      return res.status(400).json({ message: 'Maximum verification attempts exceeded. Please request a new OTP.' });
+    }
+
+    if (user.resetOtp !== otp) {
+      user.resetOtpAttempts = (user.resetOtpAttempts || 0) + 1;
+      await user.save();
+      return res.status(400).json({ message: 'Invalid OTP' });
     }
 
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(newPassword, salt);
     user.resetOtp = undefined;
     user.resetOtpExpires = undefined;
+    user.resetOtpAttempts = 0;
     await user.save();
 
     res.json({ message: 'Password has been reset successfully' });
@@ -1105,9 +1130,77 @@ app.post('/api/reset-password', async (req, res) => {
 
 // ========== CHAT / MESSAGING API ==========
 
-// Get all conversations for a user
-app.get('/api/conversations/:userId', async (req, res) => {
+// ========== USER INTERACTIONS API (SHORTLIST, INTEREST, IGNORE) ==========
+
+app.get('/api/user/interactions', authMiddleware, async (req, res) => {
   try {
+    const user = await User.findById(req.userId).select('shortlistedIds interestedIds ignoredIds');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json({
+      shortlistedIds: user.shortlistedIds || [],
+      interestedIds: user.interestedIds || [],
+      ignoredIds: user.ignoredIds || []
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.post('/api/user/shortlist', authMiddleware, async (req, res) => {
+  try {
+    const { targetUserId, action } = req.body;
+    if (!targetUserId) return res.status(400).json({ message: 'targetUserId required' });
+    const update = action === 'remove'
+      ? { $pull: { shortlistedIds: targetUserId } }
+      : { $addToSet: { shortlistedIds: targetUserId } };
+    const user = await User.findByIdAndUpdate(req.userId, update, { new: true }).select('shortlistedIds');
+    res.json({ shortlistedIds: user.shortlistedIds || [] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.post('/api/user/interest', authMiddleware, async (req, res) => {
+  try {
+    const { targetUserId, action } = req.body;
+    if (!targetUserId) return res.status(400).json({ message: 'targetUserId required' });
+    const update = action === 'remove'
+      ? { $pull: { interestedIds: targetUserId } }
+      : { $addToSet: { interestedIds: targetUserId } };
+    const user = await User.findByIdAndUpdate(req.userId, update, { new: true }).select('interestedIds');
+    res.json({ interestedIds: user.interestedIds || [] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.post('/api/user/ignore', authMiddleware, async (req, res) => {
+  try {
+    const { targetUserId, action } = req.body;
+    if (!targetUserId) return res.status(400).json({ message: 'targetUserId required' });
+    const update = action === 'remove'
+      ? { $pull: { ignoredIds: targetUserId } }
+      : { $addToSet: { ignoredIds: targetUserId } };
+    const user = await User.findByIdAndUpdate(req.userId, update, { new: true }).select('ignoredIds');
+    res.json({ ignoredIds: user.ignoredIds || [] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ========== CHAT / MESSAGING API ==========
+
+// Get all conversations for a user
+app.get('/api/conversations/:userId', authMiddleware, async (req, res) => {
+  try {
+    if (req.userId !== req.params.userId) {
+      return res.status(403).json({ message: 'Forbidden: Cannot access conversations of another user' });
+    }
+
     const conversations = await Conversation.find({
       participants: req.params.userId
     }).populate('participants', 'firstName lastName image memberId').sort({ lastMessageTime: -1 });
@@ -1130,9 +1223,13 @@ app.get('/api/conversations/:userId', async (req, res) => {
 });
 
 // Start or get existing conversation between two users (plan-gated)
-app.post('/api/conversations', async (req, res) => {
+app.post('/api/conversations', authMiddleware, async (req, res) => {
   try {
     const { senderId, receiverId } = req.body;
+
+    if (req.userId !== senderId) {
+      return res.status(403).json({ message: 'Forbidden: Cannot start conversation on behalf of another user' });
+    }
 
     const receiver = await User.findById(receiverId).select('gender');
     if (!receiver) return res.status(404).json({ message: 'Receiver not found' });
@@ -1171,8 +1268,16 @@ app.post('/api/conversations', async (req, res) => {
 });
 
 // Get messages for a conversation
-app.get('/api/messages/:conversationId', async (req, res) => {
+app.get('/api/messages/:conversationId', authMiddleware, async (req, res) => {
   try {
+    const conversation = await Conversation.findById(req.params.conversationId);
+    if (!conversation) return res.status(404).json({ message: 'Conversation not found' });
+
+    const isParticipant = conversation.participants.some(p => p.toString() === req.userId);
+    if (!isParticipant) {
+      return res.status(403).json({ message: 'Forbidden: You are not a participant in this conversation' });
+    }
+
     const messages = await Message.find({
       conversationId: req.params.conversationId
     }).sort({ createdAt: 1 });
@@ -1184,9 +1289,21 @@ app.get('/api/messages/:conversationId', async (req, res) => {
 });
 
 // Send a message (server-side plan enforcement)
-app.post('/api/messages', async (req, res) => {
+app.post('/api/messages', authMiddleware, async (req, res) => {
   try {
     const { conversationId, senderId, text } = req.body;
+
+    if (req.userId !== senderId) {
+      return res.status(403).json({ message: 'Forbidden: Cannot send message as another user' });
+    }
+
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) return res.status(404).json({ message: 'Conversation not found' });
+
+    const isParticipant = conversation.participants.some(p => p.toString() === req.userId);
+    if (!isParticipant) {
+      return res.status(403).json({ message: 'Forbidden: You are not a participant in this conversation' });
+    }
 
     // Server-side plan check: Free users cannot send messages
     const sender = await User.findById(senderId).select('memberType');
@@ -1212,9 +1329,13 @@ app.post('/api/messages', async (req, res) => {
 });
 
 // Mark messages as read
-app.put('/api/messages/read', async (req, res) => {
+app.put('/api/messages/read', authMiddleware, async (req, res) => {
   try {
     const { conversationId, userId } = req.body;
+    if (req.userId !== userId) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
     await Message.updateMany(
       { conversationId, senderId: { $ne: userId }, read: false },
       { read: true }
@@ -1227,7 +1348,7 @@ app.put('/api/messages/read', async (req, res) => {
 });
 
 // Find user by memberId (for starting chat from member card)
-app.get('/api/user-by-member/:memberId', async (req, res) => {
+app.get('/api/user-by-member/:memberId', authMiddleware, async (req, res) => {
   try {
     const user = await User.findOne({ memberId: req.params.memberId }).select('-password');
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -1241,9 +1362,13 @@ app.get('/api/user-by-member/:memberId', async (req, res) => {
 // ========== CONNECTION / INTEREST API ==========
 
 // Send interest
-app.post('/api/connections/send', async (req, res) => {
+app.post('/api/connections/send', authMiddleware, async (req, res) => {
   try {
     const { senderId, receiverMemberId } = req.body;
+    if (req.userId !== senderId) {
+      return res.status(403).json({ message: 'Forbidden: Cannot send interest on behalf of another user' });
+    }
+
     const receiver = await User.findOne({ memberId: receiverMemberId });
     if (!receiver) return res.status(404).json({ message: 'User not found' });
     if (receiver._id.toString() === senderId) return res.status(400).json({ message: 'Cannot send interest to yourself' });
@@ -1276,8 +1401,12 @@ app.post('/api/connections/send', async (req, res) => {
 });
 
 // Get sent interests
-app.get('/api/connections/sent/:userId', async (req, res) => {
+app.get('/api/connections/sent/:userId', authMiddleware, async (req, res) => {
   try {
+    if (req.userId !== req.params.userId) {
+      return res.status(403).json({ message: 'Forbidden: Cannot view sent interests of another user' });
+    }
+
     const connections = await Connection.find({ senderId: req.params.userId })
       .populate('receiverId', 'firstName lastName image memberId religion caste profileData')
       .sort({ createdAt: -1 });
@@ -1289,8 +1418,12 @@ app.get('/api/connections/sent/:userId', async (req, res) => {
 });
 
 // Get received interests
-app.get('/api/connections/received/:userId', async (req, res) => {
+app.get('/api/connections/received/:userId', authMiddleware, async (req, res) => {
   try {
+    if (req.userId !== req.params.userId) {
+      return res.status(403).json({ message: 'Forbidden: Cannot view received interests of another user' });
+    }
+
     const connections = await Connection.find({ receiverId: req.params.userId })
       .populate('senderId', 'firstName lastName image memberId religion caste profileData')
       .sort({ createdAt: -1 });
@@ -1302,10 +1435,14 @@ app.get('/api/connections/received/:userId', async (req, res) => {
 });
 
 // Accept interest
-app.put('/api/connections/:id/accept', async (req, res) => {
+app.put('/api/connections/:id/accept', authMiddleware, async (req, res) => {
   try {
     const connection = await Connection.findById(req.params.id);
     if (!connection) return res.status(404).json({ message: 'Connection not found' });
+
+    if (connection.receiverId.toString() !== req.userId) {
+      return res.status(403).json({ message: 'Forbidden: Only the receiver can accept this interest' });
+    }
 
     connection.status = 'accepted';
     await connection.save();
@@ -1329,10 +1466,14 @@ app.put('/api/connections/:id/accept', async (req, res) => {
 });
 
 // Decline interest
-app.put('/api/connections/:id/decline', async (req, res) => {
+app.put('/api/connections/:id/decline', authMiddleware, async (req, res) => {
   try {
     const connection = await Connection.findById(req.params.id);
     if (!connection) return res.status(404).json({ message: 'Connection not found' });
+
+    if (connection.receiverId.toString() !== req.userId) {
+      return res.status(403).json({ message: 'Forbidden: Only the receiver can decline this interest' });
+    }
 
     connection.status = 'declined';
     await connection.save();
@@ -1344,8 +1485,12 @@ app.put('/api/connections/:id/decline', async (req, res) => {
 });
 
 // Get accepted matches (for chat access check)
-app.get('/api/connections/matches/:userId', async (req, res) => {
+app.get('/api/connections/matches/:userId', authMiddleware, async (req, res) => {
   try {
+    if (req.userId !== req.params.userId) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
     const matches = await Connection.find({
       $or: [
         { senderId: req.params.userId, status: 'accepted' },

@@ -51,8 +51,11 @@ export default function Messaging() {
   // Fetch conversations
   const fetchConversations = async () => {
     if (!currentUserId) return;
+    const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`/api/conversations/${currentUserId}`);
+      const res = await fetch(`/api/conversations/${currentUserId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (res.ok) {
         const data = await res.json().catch(() => []);
         setConversations(data);
@@ -82,8 +85,11 @@ export default function Messaging() {
   const fetchMessages = async (convId, isPolling = false) => {
     if (!convId) return;
     if (!isPolling) setIsLoadingMsgs(true);
+    const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`/api/messages/${convId}`);
+      const res = await fetch(`/api/messages/${convId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (res.ok) {
         const data = await res.json().catch(() => []);
         setMessages(data);
@@ -91,7 +97,10 @@ export default function Messaging() {
       // Mark messages as read
       await fetch('/api/messages/read', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ conversationId: convId, userId: currentUserId })
       });
       // Refresh conversations to update unread counts
@@ -138,9 +147,12 @@ export default function Messaging() {
 
   // Start chat with a member (used from MemberCard)
   const startChatWithMember = async (memberId) => {
+    const token = localStorage.getItem('token');
     try {
       // First check if connection is accepted
-      const statusRes = await fetch(`/api/connections/status/${currentUserId}/${memberId}`);
+      const statusRes = await fetch(`/api/connections/status/${currentUserId}/${memberId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (statusRes.ok) {
         const data = await statusRes.json();
         if (data.status !== 'accepted') {
@@ -150,14 +162,19 @@ export default function Messaging() {
       }
 
       // Get the user by memberId
-      const userRes = await fetch(`/api/user-by-member/${memberId}`);
+      const userRes = await fetch(`/api/user-by-member/${memberId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (!userRes.ok) return;
       const targetUser = await userRes.json();
 
       // Create or get conversation
       const convRes = await fetch('/api/conversations', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ senderId: currentUserId, receiverId: targetUser._id })
       });
       if (convRes.ok) {
@@ -189,10 +206,14 @@ export default function Messaging() {
     };
     setMessages(prev => [...prev, optimisticMsg]);
 
+    const token = localStorage.getItem('token');
     try {
       await fetch('/api/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ conversationId: activeConvId, senderId: currentUserId, text })
       });
       fetchMessages(activeConvId);

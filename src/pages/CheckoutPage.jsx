@@ -62,7 +62,7 @@ const planRedirectUrls = {
 export default function CheckoutPage() {
   const { plan } = useParams();
   const navigate = useNavigate();
-  const [paymentMethod, setPaymentMethod] = useState('phonepe');
+  const [paymentMethod, setPaymentMethod] = useState('razorpay');
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState('');
@@ -117,49 +117,6 @@ export default function CheckoutPage() {
     }
   }, [userProfile, selectedPlan, navigate]);
 
-  // Handle return redirect from PhonePe payment page
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const txnId = urlParams.get('txnId');
-    const statusParam = urlParams.get('status');
-
-    if (txnId && statusParam === 'check') {
-      const verifyPhonePePayment = async () => {
-        setVerifying(true);
-        try {
-          const token = localStorage.getItem('token');
-          const res = await fetch('/api/phonepe/verify', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ transactionId: txnId, plan })
-          });
-
-          const data = await res.json();
-          if (res.ok && data.success) {
-            if (data.user) {
-              const updatedProfile = { ...userProfile, ...data.user };
-              localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
-              window.dispatchEvent(new Event('profileUpdated'));
-            }
-            setSuccess(true);
-          } else {
-            setError(data.message || 'PhonePe payment verification failed or is still pending.');
-          }
-        } catch (err) {
-          console.error('PhonePe verification error:', err);
-          setError('Failed to verify payment status. If your account was debited, your membership will be activated shortly.');
-        } finally {
-          setVerifying(false);
-        }
-      };
-
-      verifyPhonePePayment();
-    }
-  }, [plan]);
-
   if (!selectedPlan) return null;
 
   const total = selectedPlan.price + selectedPlan.gst;
@@ -180,24 +137,81 @@ export default function CheckoutPage() {
       const userId = userProfile.id || userProfile._id || userProfile.memberId;
       if (!userId) throw new Error('User ID not found');
 
-      if (paymentMethod === 'phonepe') {
+      if (paymentMethod === 'razorpay') {
         const token = localStorage.getItem('token');
-        const res = await fetch('/api/phonepe/initiate', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ plan: plan?.toLowerCase() })
-        });
+        try {
+          // Attempt Razorpay order creation & popup modal
+          const res = await fetch('/api/razorpay/create-order', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ userId, plan: plan?.toLowerCase() })
+          });
 
-        const data = await res.json();
-        if (!res.ok || !data.success || !data.redirectUrl) {
-          throw new Error(data.message || 'Could not initiate PhonePe Payment gateway');
+          const data = await res.json();
+
+          if (res.ok && data.orderId && window.Razorpay) {
+            const options = {
+              key: data.keyId,
+              amount: data.amount,
+              currency: data.currency,
+              name: 'Coastal Shaadi',
+              description: `${selectedPlan.name} Plan (${selectedPlan.duration})`,
+              order_id: data.orderId,
+              handler: async function (response) {
+                setVerifying(true);
+                try {
+                  const verifyRes = await fetch('/api/razorpay/verify-payment', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                      razorpay_order_id: response.razorpay_order_id,
+                      razorpay_payment_id: response.razorpay_payment_id,
+                      razorpay_signature: response.razorpay_signature,
+                      userId,
+                      plan: plan?.toLowerCase()
+                    })
+                  });
+
+                  const verifyData = await verifyRes.json();
+                  if (verifyRes.ok && verifyData.user) {
+                    const updatedProfile = { ...userProfile, ...verifyData.user };
+                    localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
+                    window.dispatchEvent(new Event('profileUpdated'));
+                    setSuccess(true);
+                  } else {
+                    setError(verifyData.message || 'Payment verification failed.');
+                  }
+                } catch (err) {
+                  setError('Payment verification failed. Please contact support.');
+                } finally {
+                  setVerifying(false);
+                  setLoading(false);
+                }
+              },
+              prefill: {
+                name: `${userProfile.firstName || ''} ${userProfile.lastName || ''}`,
+                email: userProfile.email || '',
+                contact: userProfile.phone || ''
+              },
+              theme: { color: '#d946ef' }
+            };
+
+            const rzp = new window.Razorpay(options);
+            rzp.open();
+            setLoading(false);
+            return;
+          }
+        } catch (apiErr) {
+          console.warn('Razorpay order creation API unavailable, falling back to Razorpay Pay Link:', apiErr);
         }
 
-        window.location.href = data.redirectUrl;
-      } else if (paymentMethod === 'online') {
+        // Fallback to Razorpay hosted Pay Link
         const redirectUrl = planRedirectUrls[plan?.toLowerCase()];
         if (redirectUrl) {
           window.location.href = redirectUrl;
@@ -334,49 +348,28 @@ export default function CheckoutPage() {
                 <CreditCard size={16} className="text-primary" />
                 Payment Method
               </h3>
-              
-              <div className="space-y-3">
+                   <div className="space-y-3">
                 <label className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                  paymentMethod === 'phonepe' ? 'border-purple-600 bg-purple-50/50' : 'border-gray-200 hover:border-gray-300'
+                  paymentMethod === 'razorpay' ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'
                 }`}>
                   <input 
                     type="radio" 
                     name="payment" 
-                    value="phonepe"
-                    checked={paymentMethod === 'phonepe'}
-                    onChange={() => setPaymentMethod('phonepe')}
-                    className="w-4 h-4 text-purple-600 accent-purple-600" 
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm text-gray-900">PhonePe Payment Gateway</span>
-                      <span className="text-[10px] uppercase tracking-wider font-bold bg-purple-600 text-white px-2 py-0.5 rounded-full">Instant</span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-0.5">Pay via PhonePe App, UPI, GPay, QR, Credit/Debit Cards & Netbanking</p>
-                  </div>
-                  <div className="flex gap-1.5 items-center">
-                    <div className="px-2 py-1 bg-purple-100 text-purple-700 rounded font-bold text-xs">PhonePe</div>
-                    <div className="w-8 h-5 bg-gray-100 rounded flex items-center justify-center text-[8px] font-bold text-gray-500">UPI</div>
-                  </div>
-                </label>
-
-                <label className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                  paymentMethod === 'online' ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'
-                }`}>
-                  <input 
-                    type="radio" 
-                    name="payment" 
-                    value="online"
-                    checked={paymentMethod === 'online'}
-                    onChange={() => setPaymentMethod('online')}
+                    value="razorpay"
+                    checked={paymentMethod === 'razorpay'}
+                    onChange={() => setPaymentMethod('razorpay')}
                     className="w-4 h-4 text-primary accent-primary" 
                   />
                   <div className="flex-1">
-                    <span className="font-semibold text-sm text-gray-900">Razorpay Pay Link</span>
-                    <p className="text-xs text-gray-500 mt-0.5">Pay via hosted Razorpay links</p>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm text-gray-900">Razorpay Payment Gateway</span>
+                      <span className="text-[10px] uppercase tracking-wider font-bold bg-primary text-white px-2 py-0.5 rounded-full">Instant</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">Pay via UPI, GPay, PhonePe App, QR, Credit/Debit Cards & Netbanking</p>
                   </div>
-                  <div className="flex gap-1.5">
-                    <div className="w-8 h-5 bg-gray-100 rounded flex items-center justify-center text-[8px] font-bold text-gray-500">VISA</div>
+                  <div className="flex gap-1.5 items-center">
+                    <div className="px-2 py-1 bg-blue-100 text-blue-800 rounded font-bold text-xs">Razorpay</div>
+                    <div className="w-8 h-5 bg-gray-100 rounded flex items-center justify-center text-[8px] font-bold text-gray-500">UPI</div>
                   </div>
                 </label>
 
@@ -480,7 +473,6 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-
               {/* Error Message */}
               {error && (
                 <div className="mt-4 bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-start gap-3">
@@ -505,7 +497,7 @@ export default function CheckoutPage() {
                 {loading || verifying ? (
                   <>
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    {verifying ? 'Verifying PhonePe Payment...' : 'Connecting to PhonePe...'}
+                    {verifying ? 'Verifying Razorpay Payment...' : 'Connecting to Razorpay...'}
                   </>
                 ) : (
                   <>
@@ -523,7 +515,7 @@ export default function CheckoutPage() {
                 </div>
                 <div className="flex items-center gap-1">
                   <Lock size={12} />
-                  <span>PhonePe PG</span>
+                  <span>Razorpay Secure</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <CreditCard size={12} />

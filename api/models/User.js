@@ -24,6 +24,10 @@ const userSchema = new mongoose.Schema({
   paymentProvider: { type: String },
   resetOtp: { type: String },
   resetOtpExpires: { type: Date },
+  resetOtpAttempts: { type: Number, default: 0 },
+  shortlistedIds: { type: [String], default: [] },
+  interestedIds: { type: [String], default: [] },
+  ignoredIds: { type: [String], default: [] },
   lastSeen: { type: Date, default: Date.now },
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
   status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }

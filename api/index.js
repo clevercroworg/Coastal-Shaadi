@@ -905,7 +905,8 @@ app.get('/api/showcase-profiles', async (req, res) => {
     const viewerGender = req.query.viewerGender;
     if (viewerGender) {
       // Show opposite gender: if viewer is Female, show Male profiles and vice versa
-      filter.gender = viewerGender === 'Female' ? 'Male' : 'Female';
+      const isFemale = (viewerGender || '').trim().toLowerCase() === 'female';
+      filter.gender = isFemale ? 'Male' : 'Female';
     }
     
     const users = await User.find(filter)
@@ -932,7 +933,8 @@ app.get('/api/members', authMiddleware, async (req, res) => {
     const currentUser = await User.findById(req.userId).select('gender');
     const filter = { role: 'user', status: 'approved' };
     if (currentUser && currentUser.gender) {
-      filter.gender = currentUser.gender === 'Female' ? 'Male' : 'Female';
+      const isFemale = (currentUser.gender || '').trim().toLowerCase() === 'female';
+      filter.gender = isFemale ? 'Male' : 'Female';
     }
 
     const users = await User.find(filter).select('-password').lean();

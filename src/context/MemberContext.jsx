@@ -165,79 +165,79 @@ export const MemberProvider = ({ children }) => {
     };
   }, [syncUserProfile]);
 
-  useEffect(() => {
-    const fetchMembers = async () => {
-      const token = localStorage.getItem('token');
-      if (!token || !userProfile || userProfile.status !== 'approved') {
-        setMembers([]);
-        setIsLoading(false);
-        return;
-      }
+  const fetchMembers = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token || !userProfile || userProfile.status !== 'approved') {
+      setMembers([]);
+      setIsLoading(false);
+      return;
+    }
 
-      try {
-        setIsLoading(true);
-        const response = await fetch('/api/members', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        if (response.ok) {
-          const data = await response.json();
-          
-          const calculateAge = (dob) => {
-            if (!dob || dob === '-') return '-';
-            const birthDate = new Date(dob);
-            if (isNaN(birthDate.getTime())) return '-';
-            const today = new Date();
-            let age = today.getFullYear() - birthDate.getFullYear();
-            const m = today.getMonth() - birthDate.getMonth();
-            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-              age--;
-            }
-            return age;
-          };
-
-          const boostRegions = ['udupi', 'mangalore', 'mangaluru', 'manipal', 'kundapura', 'karwar', 'kasaragod'];
-          const formattedMembers = data.map(user => {
-            const city = (user.profileData?.city || '').toLowerCase();
-            const isElite = user.memberType === 'Elite';
-            const isBoosted = isElite && boostRegions.some(r => city.includes(r));
-            return {
-              id: user.memberId || user._id,
-              memberId: user.memberId,
-              name: `${user.firstName} ${user.lastName}`,
-              type: user.memberType || 'Free',
-              age: calculateAge(user.dob) !== '-' ? calculateAge(user.dob) : (user.profileData?.age || '-'),
-              height: user.profileData?.height || '-',
-              gender: user.gender || '-',
-              religion: user.religion || '-',
-              caste: user.caste || '-',
-              subCaste: user.profileData?.subCaste || '-',
-              language: user.profileData?.motherTongue || '-',
-              maritalStatus: user.profileData?.maritalStatus || '-',
-              profession: user.profileData?.profession || '-',
-              country: user.profileData?.country || '-',
-              state: user.profileData?.state || '-',
-              city: user.profileData?.city || '-',
-              location: [user.profileData?.city, user.profileData?.state, user.profileData?.country].filter(l => l && l !== '-').join(', ') || '-',
-              image: user.image || null,
-              additionalImages: user.additionalImages || [],
-              whatsappConsent: user.whatsappConsent || false,
-              whatsappNumber: user.whatsappNumber || '',
-              isBoosted
-            };
-          });
-          setMembers(formattedMembers);
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/members', {
+        headers: {
+          'Authorization': `Bearer ${token}`
         }
-      } catch (error) {
-        console.error("Failed to fetch members", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      });
+      if (response.ok) {
+        const data = await response.json();
+        
+        const calculateAge = (dob) => {
+          if (!dob || dob === '-') return '-';
+          const birthDate = new Date(dob);
+          if (isNaN(birthDate.getTime())) return '-';
+          const today = new Date();
+          let age = today.getFullYear() - birthDate.getFullYear();
+          const m = today.getMonth() - birthDate.getMonth();
+          if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+          }
+          return age;
+        };
 
+        const boostRegions = ['udupi', 'mangalore', 'mangaluru', 'manipal', 'kundapura', 'karwar', 'kasaragod'];
+        const formattedMembers = data.map(user => {
+          const city = (user.profileData?.city || '').toLowerCase();
+          const isElite = user.memberType === 'Elite';
+          const isBoosted = isElite && boostRegions.some(r => city.includes(r));
+          return {
+            id: user.memberId || user._id,
+            memberId: user.memberId,
+            name: `${user.firstName} ${user.lastName}`,
+            type: user.memberType || 'Free',
+            age: calculateAge(user.dob) !== '-' ? calculateAge(user.dob) : (user.profileData?.age || '-'),
+            height: user.profileData?.height || '-',
+            gender: user.gender || '-',
+            religion: user.religion || '-',
+            caste: user.caste || '-',
+            subCaste: user.profileData?.subCaste || '-',
+            language: user.profileData?.motherTongue || '-',
+            maritalStatus: user.profileData?.maritalStatus || '-',
+            profession: user.profileData?.profession || '-',
+            country: user.profileData?.country || '-',
+            state: user.profileData?.state || '-',
+            city: user.profileData?.city || '-',
+            location: [user.profileData?.city, user.profileData?.state, user.profileData?.country].filter(l => l && l !== '-').join(', ') || '-',
+            image: user.image || null,
+            additionalImages: user.additionalImages || [],
+            whatsappConsent: user.whatsappConsent || false,
+            whatsappNumber: user.whatsappNumber || '',
+            isBoosted
+          };
+        });
+        setMembers(formattedMembers);
+      }
+    } catch (error) {
+      console.error("Failed to fetch members", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userProfile?.status, userProfile?.id, userProfile?.gender]);
+
+  useEffect(() => {
     fetchMembers();
-  }, []);
+  }, [fetchMembers]);
 
   // Sync interactions with backend
   useEffect(() => {
@@ -338,15 +338,18 @@ export const MemberProvider = ({ children }) => {
   // Dynamically filter members based on logged-in user (memoized)
   const filteredMembers = useMemo(() => {
     if (userProfile) {
+      const userReligion = (userProfile.religion || '').trim().toLowerCase();
+      const userGender = (userProfile.gender || '').trim().toLowerCase();
+
       return members.filter(m => {
         // Hide self
         if (m.id === userProfile.memberId || m.id === userProfile.id) return false;
         
-        // Strict Religion Filter (Only show same religion)
-        if (userProfile.religion && m.religion !== userProfile.religion) return false;
+        // Strict Religion Filter (Only show same religion, case-insensitive & trimmed)
+        if (userReligion && (m.religion || '').trim().toLowerCase() !== userReligion) return false;
 
-        // Strict Gender Filter (Only show opposite gender)
-        if (userProfile.gender && m.gender === userProfile.gender) return false;
+        // Strict Gender Filter (Only show opposite gender, case-insensitive & trimmed)
+        if (userGender && (m.gender || '').trim().toLowerCase() === userGender) return false;
 
         return true;
       });

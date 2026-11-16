@@ -5,7 +5,7 @@ dotenv.config();
 
 import User from './api/models/User.js';
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://coastalshaadi_db_user:***REMOVED***@cluster0.jwwbkbc.mongodb.net/coastalshaadi?retryWrites=true&w=majority&appName=Cluster0';
+const MONGODB_URI = process.env.MONGODB_URI;
 
 async function createAdmin() {
   try {
@@ -13,7 +13,8 @@ async function createAdmin() {
     console.log('MongoDB Connected to create admin');
 
     const email = 'costalshaadi@gmail.com';
-    const password = '***REMOVED***';
+    const password = process.env.ADMIN_PASSWORD;
+    if (!password) throw new Error('Set ADMIN_PASSWORD in .env');
     
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);

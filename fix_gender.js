@@ -1,6 +1,9 @@
 import mongoose from 'mongoose';
 import User from './api/models/User.js';
-const MONGODB_URI = 'mongodb+srv://coastalshaadi_db_user:***REMOVED***@cluster0.jwwbkbc.mongodb.net/coastalshaadi?retryWrites=true&w=majority&appName=Cluster0';
+import dotenv from 'dotenv';
+dotenv.config();
+
+const MONGODB_URI = process.env.MONGODB_URI;
 
 async function run() {
   await mongoose.connect(MONGODB_URI);

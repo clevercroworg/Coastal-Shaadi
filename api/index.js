@@ -61,8 +61,8 @@ const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
 const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 
-const PHONEPE_CLIENT_ID = process.env.PHONEPE_CLIENT_ID || '***REMOVED***';
-const PHONEPE_CLIENT_SECRET = process.env.PHONEPE_CLIENT_SECRET || '***REMOVED***';
+const PHONEPE_CLIENT_ID = process.env.PHONEPE_CLIENT_ID;
+const PHONEPE_CLIENT_SECRET = process.env.PHONEPE_CLIENT_SECRET;
 const PHONEPE_CLIENT_VERSION = process.env.PHONEPE_CLIENT_VERSION || '1';
 const PHONEPE_MERCHANT_ID = process.env.PHONEPE_MERCHANT_ID || 'M22H0M16HVDZG';
 const PHONEPE_HOST_URL = process.env.PHONEPE_HOST_URL || (
@@ -654,7 +654,7 @@ app.post('/api/phonepe/initiate', authMiddleware, async (req, res) => {
 
     if (isProd) {
       // Production PG V1 Checksum Signing Flow
-      const saltKey = process.env.PHONEPE_CLIENT_SECRET || process.env.PHONEPE_SALT_KEY || '***REMOVED***';
+      const saltKey = process.env.PHONEPE_CLIENT_SECRET || process.env.PHONEPE_SALT_KEY;
       const saltIndex = process.env.PHONEPE_CLIENT_VERSION || process.env.PHONEPE_SALT_INDEX || '1';
       const merchantId = process.env.PHONEPE_MERCHANT_ID || 'M22H0M16HVDZG';
       const hostUrl = process.env.PHONEPE_HOST_URL || 'https://api.phonepe.com/apis/hermes';

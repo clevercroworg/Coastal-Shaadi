@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, KeyRound, ShieldCheck, ArrowLeft, Loader2, CheckCircle } from 'lucide-react';
+import { apiErrorMessage, errorMessage } from '../utils/errorMessages';
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
@@ -32,15 +33,15 @@ export default function ForgotPassword() {
       try {
         data = await res.json();
       } catch (err) {
-        throw new Error('Server connection failed. Please try again later.');
+        throw new Error("We couldn't send the verification code right now. Please try again in a moment.");
       }
       
-      if (!res.ok) throw new Error(data?.message || 'Failed to send OTP. Please check your email.');
+      if (!res.ok) throw new Error(apiErrorMessage(res, data, "We couldn't send the verification code. Please check your email address and try again."));
 
       setSuccess('A 6-digit verification code has been sent to your email.');
       setStep(2);
     } catch (err) {
-      setError(err.message);
+      setError(errorMessage(err));
     } finally {
       setIsLoading(false);
     }
@@ -94,16 +95,16 @@ export default function ForgotPassword() {
       try {
         data = await res.json();
       } catch (err) {
-        throw new Error('Unable to connect to the server. Please try again.');
+        throw new Error("We couldn't verify the code right now. Please try again in a moment.");
       }
 
-      if (!res.ok) throw new Error(data?.message || 'Invalid or expired OTP. Please try again.');
+      if (!res.ok) throw new Error(apiErrorMessage(res, data, 'This verification code is invalid or has expired. Please request a new one.'));
 
       setOtp(fullOtp);
       setSuccess('');
       setStep(3);
     } catch (err) {
-      setError(err.message);
+      setError(errorMessage(err));
     } finally {
       setIsLoading(false);
     }
@@ -118,7 +119,7 @@ export default function ForgotPassword() {
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match');
+      setError('Passwords do not match. Please re-enter them.');
       return;
     }
 
@@ -135,14 +136,14 @@ export default function ForgotPassword() {
       try {
         data = await res.json();
       } catch (err) {
-        throw new Error('Unable to complete request. Please try again later.');
+        throw new Error("We couldn't reset your password right now. Please try again in a moment.");
       }
 
-      if (!res.ok) throw new Error(data?.message || 'Failed to reset password. Please try again.');
+      if (!res.ok) throw new Error(apiErrorMessage(res, data, "We couldn't reset your password right now. Please try again in a moment."));
 
       setStep(4);
     } catch (err) {
-      setError(err.message);
+      setError(errorMessage(err));
     } finally {
       setIsLoading(false);
     }

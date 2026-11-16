@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ShieldAlert } from 'lucide-react';
+import { apiErrorMessage, errorMessage } from '../utils/errorMessages';
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -29,12 +30,12 @@ export default function AdminLogin() {
       try {
         data = await res.json();
       } catch (err) {
-        throw new Error('Admin server unavailable. Please try again later.');
+        throw new Error("We couldn't sign you in right now. Please try again in a moment.");
       }
-      if (!res.ok) throw new Error(data?.message || 'Authentication failed.');
+      if (!res.ok) throw new Error(apiErrorMessage(res, data, 'Incorrect email or password. Please try again.'));
 
       if (data.user.role !== 'admin') {
-        throw new Error('Access denied: Admin privileges required.');
+        throw new Error('This account does not have admin access.');
       }
       
       localStorage.setItem('token', data.token);
@@ -42,7 +43,7 @@ export default function AdminLogin() {
 
       navigate('/admin');
     } catch (err) {
-      setError(err.message);
+      setError(errorMessage(err));
     } finally {
       setIsLoading(false);
     }

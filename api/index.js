@@ -15,6 +15,10 @@ import Connection from './models/Connection.js';
 import { sendPendingEmail, sendApprovalEmail, sendRejectionEmail, sendAdminNotificationEmail, sendOtpEmail, sendContactEmail, sendPaymentSuccessUserEmail, sendPaymentSuccessAdminEmail } from './utils/email.js';
 import crypto from 'crypto';
 
+// Member-facing messages for failures. Technical details go to the logs only.
+const SERVER_ERROR = 'Something went wrong on our side. Please try again in a moment.';
+const PAYMENT_NOT_CONFIRMED = 'We could not confirm your payment yet. If any amount was deducted, please contact our support team and we will activate your plan right away.';
+
 // Utility to enforce plan expiry
 const enforcePlanExpiry = async (user) => {
   if (user && user.memberType !== 'Free' && user.planExpiry && new Date(user.planExpiry) < new Date()) {
@@ -33,23 +37,23 @@ app.use(express.json());
 // ========== AUTH MIDDLEWARE ==========
 const authMiddleware = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1] || req.headers['x-auth-token'];
-  if (!token) return res.status(401).json({ message: 'No token, authorization denied' });
+  if (!token) return res.status(401).json({ message: 'Please log in to continue.' });
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.userId = decoded.user.id;
     next();
   } catch (err) {
-    return res.status(401).json({ message: 'Token expired or invalid' });
+    return res.status(401).json({ message: 'Your session has expired. Please log in again to continue.' });
   }
 };
 
 const adminMiddleware = async (req, res, next) => {
   try {
     const user = await User.findById(req.userId).select('role');
-    if (!user || user.role !== 'admin') return res.status(403).json({ message: 'Admin access required' });
+    if (!user || user.role !== 'admin') return res.status(403).json({ message: 'You do not have permission to access this page.' });
     next();
   } catch (err) {
-    return res.status(500).json({ message: 'Server error' });
+    return res.status(500).json({ message: SERVER_ERROR });
   }
 };
 
@@ -125,7 +129,7 @@ const connectDB = async (req, res, next) => {
   } catch (err) {
     console.error('MongoDB Connection Error:', err);
     cachedDb = null;
-    return res.status(500).json({ message: 'Database connection failed: ' + err.message });
+    return res.status(503).json({ message: 'Our service is temporarily unavailable. Please try again in a few minutes.' });
   }
 };
 app.use(connectDB);
@@ -156,7 +160,7 @@ app.get('/api/health', (req, res) => {
 app.get('/api/me', authMiddleware, async (req, res) => {
   try {
     let user = await User.findById(req.userId).select('-password');
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user) return res.status(404).json({ message: 'This profile could not be found.' });
     user = await enforcePlanExpiry(user);
     res.json({
       id: user.id,
@@ -179,7 +183,7 @@ app.get('/api/me', authMiddleware, async (req, res) => {
     });
   } catch (err) {
     console.error('GET /api/me ERROR:', err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -194,7 +198,7 @@ app.post('/api/contact', async (req, res) => {
     res.status(200).json({ message: 'Contact email sent successfully!' });
   } catch (err) {
     console.error('CONTACT EMAIL ERROR:', err);
-    res.status(500).json({ message: 'Server error: ' + err.message });
+    res.status(500).json({ message: "We couldn't send your message right now. Please try again shortly." });
   }
 });
 
@@ -217,7 +221,7 @@ app.post('/api/register', async (req, res) => {
       ] 
     });
     if (user) {
-      return res.status(400).json({ message: 'User with this email or phone already exists' });
+      return res.status(400).json({ message: 'An account with this email or phone number already exists. Please log in instead.' });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -231,7 +235,7 @@ app.post('/api/register', async (req, res) => {
       const exists = await User.findOne({ memberId });
       if (!exists) break;
       attempts++;
-      if (attempts >= 5) return res.status(500).json({ message: 'Failed to generate unique ID. Please try again.' });
+      if (attempts >= 5) return res.status(500).json({ message: "We couldn't complete your registration right now. Please try again in a moment." });
     }
 
     user = new User({
@@ -306,12 +310,12 @@ app.put('/api/profile', authMiddleware, async (req, res) => {
       user = await User.findOne({ memberId: targetUserId });
     }
 
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user) return res.status(404).json({ message: 'This profile could not be found.' });
 
     // Authorization Check: User can only update their own profile unless admin
     const requestingUser = await User.findById(req.userId).select('role');
     if (user._id.toString() !== req.userId && requestingUser?.role !== 'admin') {
-      return res.status(403).json({ message: 'Forbidden: You can only edit your own profile' });
+      return res.status(403).json({ message: 'You can only edit your own profile.' });
     }
 
     const updateData = {};
@@ -338,14 +342,14 @@ app.put('/api/profile', authMiddleware, async (req, res) => {
     res.json({ message: 'Profile updated successfully', user: updatedUser });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
 app.post('/api/upgrade', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const { userId, plan } = req.body;
-    if (!userId || !plan) return res.status(400).json({ message: 'User ID and plan are required' });
+    if (!userId || !plan) return res.status(400).json({ message: 'Please choose a membership plan to continue.' });
 
     // Validate plan
     const validPlans = {
@@ -355,7 +359,7 @@ app.post('/api/upgrade', authMiddleware, adminMiddleware, async (req, res) => {
     };
     
     const targetMemberType = validPlans[plan.toLowerCase()];
-    if (!targetMemberType) return res.status(400).json({ message: 'Invalid plan selected' });
+    if (!targetMemberType) return res.status(400).json({ message: 'Please choose a valid membership plan.' });
 
     let user;
     if (mongoose.Types.ObjectId.isValid(userId)) {
@@ -364,7 +368,7 @@ app.post('/api/upgrade', authMiddleware, adminMiddleware, async (req, res) => {
       user = await User.findOne({ memberId: userId });
     }
 
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user) return res.status(404).json({ message: 'This profile could not be found.' });
 
     const planExpiry = new Date();
     if (targetMemberType === 'Basic') planExpiry.setMonth(planExpiry.getMonth() + 3);
@@ -380,7 +384,7 @@ app.post('/api/upgrade', authMiddleware, adminMiddleware, async (req, res) => {
     res.json({ message: 'Upgrade successful', user: updatedUser });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error during upgrade' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -397,18 +401,18 @@ const razorpayPlanConfig = {
 app.post('/api/razorpay/create-order', async (req, res) => {
   try {
     const { userId, plan } = req.body;
-    if (!userId || !plan) return res.status(400).json({ message: 'User ID and plan are required' });
+    if (!userId || !plan) return res.status(400).json({ message: 'Please choose a membership plan to continue.' });
 
     const keyId = process.env.RAZORPAY_KEY_ID;
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
     if (!keyId || !keySecret) {
       console.error('Razorpay keys missing in environment variables:', { keyId: !!keyId, keySecret: !!keySecret });
-      return res.status(400).json({ message: 'Razorpay payment gateway credentials not configured on server.' });
+      return res.status(503).json({ message: 'Online payments are temporarily unavailable. Please try again shortly or contact support.' });
     }
 
     const planConfig = razorpayPlanConfig[plan.toLowerCase()];
-    if (!planConfig) return res.status(400).json({ message: 'Invalid plan selected' });
+    if (!planConfig) return res.status(400).json({ message: 'Please choose a valid membership plan.' });
 
     // Find user for validation
     let user;
@@ -417,8 +421,8 @@ app.post('/api/razorpay/create-order', async (req, res) => {
     } else {
       user = await User.findOne({ memberId: userId });
     }
-    if (!user) return res.status(404).json({ message: 'User not found' });
-    if (user.status !== 'approved') return res.status(403).json({ message: 'Account not approved yet' });
+    if (!user) return res.status(404).json({ message: 'This profile could not be found.' });
+    if (user.status !== 'approved') return res.status(403).json({ message: 'Your profile is still being verified. You can upgrade as soon as it is approved.' });
 
     const totalAmount = (planConfig.price + planConfig.gst) * 100; // Convert to paise
 
@@ -449,7 +453,7 @@ app.post('/api/razorpay/create-order', async (req, res) => {
   } catch (err) {
     console.error('RAZORPAY CREATE ORDER ERROR:', err);
     const detailMsg = err?.error?.description || err?.message || 'Failed to create payment order.';
-    res.status(500).json({ message: `Razorpay Error: ${detailMsg}` });
+    res.status(500).json({ message: "We couldn't start the payment right now. Please try again in a moment." });
   }
 });
 
@@ -459,7 +463,7 @@ app.post('/api/razorpay/verify-payment', async (req, res) => {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, userId, plan } = req.body;
 
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      return res.status(400).json({ message: 'Payment verification data is incomplete' });
+      return res.status(400).json({ message: PAYMENT_NOT_CONFIRMED });
     }
 
     const keySecret = (process.env.RAZORPAY_KEY_SECRET || RAZORPAY_KEY_SECRET || '').trim();
@@ -472,12 +476,12 @@ app.post('/api/razorpay/verify-payment', async (req, res) => {
 
     if (expectedSignature !== razorpay_signature) {
       console.error('RAZORPAY SIGNATURE MISMATCH:', { expected: expectedSignature, received: razorpay_signature });
-      return res.status(400).json({ message: 'Payment verification failed. Invalid signature.' });
+      return res.status(400).json({ message: PAYMENT_NOT_CONFIRMED });
     }
 
     // Signature valid → upgrade user plan
     const planConfig = razorpayPlanConfig[plan.toLowerCase()];
-    if (!planConfig) return res.status(400).json({ message: 'Invalid plan' });
+    if (!planConfig) return res.status(400).json({ message: 'Please choose a valid membership plan.' });
 
     let user;
     if (mongoose.Types.ObjectId.isValid(userId)) {
@@ -485,7 +489,7 @@ app.post('/api/razorpay/verify-payment', async (req, res) => {
     } else {
       user = await User.findOne({ memberId: userId });
     }
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user) return res.status(404).json({ message: 'This profile could not be found.' });
 
     const planExpiry = new Date();
     if (planConfig.months === 12) {
@@ -510,8 +514,8 @@ app.post('/api/razorpay/verify-payment', async (req, res) => {
     // Send emails asynchronously
     try {
       await Promise.all([
-        sendPaymentSuccessUserEmail(user.email, user.firstName, planConfig.name, planConfig.amount, razorpay_payment_id),
-        sendPaymentSuccessAdminEmail(user, planConfig.name, planConfig.amount, razorpay_payment_id)
+        sendPaymentSuccessUserEmail(user.email, user.firstName, planConfig.name, planConfig.price + planConfig.gst, razorpay_payment_id),
+        sendPaymentSuccessAdminEmail(user, planConfig.name, planConfig.price + planConfig.gst, razorpay_payment_id)
       ]);
     } catch (emailErr) {
       console.error('Failed to send payment success emails:', emailErr);
@@ -520,7 +524,7 @@ app.post('/api/razorpay/verify-payment', async (req, res) => {
     res.json({ message: 'Payment verified and plan upgraded successfully', user: updatedUser });
   } catch (err) {
     console.error('RAZORPAY VERIFY ERROR:', err);
-    res.status(500).json({ message: 'Payment verification failed. Please contact support.' });
+    res.status(500).json({ message: PAYMENT_NOT_CONFIRMED });
   }
 });
 
@@ -584,7 +588,7 @@ app.post('/api/razorpay/webhook', async (req, res) => {
 
       if (!user) {
         console.warn(`⚠️ User not found for payment. Email: ${email}, Phone: ${phone}`);
-        return res.status(200).json({ message: 'User not found' });
+        return res.status(200).json({ message: 'This profile could not be found.' });
       }
 
       // Update plan
@@ -618,7 +622,7 @@ app.post('/api/razorpay/webhook', async (req, res) => {
     res.status(200).json({ status: 'ok' });
   } catch (err) {
     console.error('Webhook error:', err);
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -636,12 +640,12 @@ app.post('/api/phonepe/initiate', authMiddleware, async (req, res) => {
     const planInfo = planAmountMap[planKey];
 
     if (!planInfo) {
-      return res.status(400).json({ message: 'Invalid plan selected' });
+      return res.status(400).json({ message: 'Please choose a valid membership plan.' });
     }
 
     const user = await User.findById(req.userId);
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: 'This profile could not be found.' });
     }
 
     const merchantOrderId = `MT_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
@@ -702,7 +706,7 @@ app.post('/api/phonepe/initiate', authMiddleware, async (req, res) => {
       } else {
         console.error('[PhonePe Prod Error]', phonepeData);
         return res.status(400).json({
-          message: phonepeData.message || (phonepeData.code === '404' ? 'PhonePe Account Verification Pending. PhonePe team is currently activating your merchant production account.' : 'Failed to initiate PhonePe payment.')
+          message: 'PhonePe payments are temporarily unavailable. Please choose another payment method.'
         });
       }
     } else {
@@ -744,13 +748,13 @@ app.post('/api/phonepe/initiate', authMiddleware, async (req, res) => {
       } else {
         console.error('[PhonePe UAT Error]', phonepeData);
         return res.status(400).json({
-          message: phonepeData.message || 'Failed to initiate PhonePe payment. Please try again.'
+          message: 'PhonePe payments are temporarily unavailable. Please choose another payment method.'
         });
       }
     }
   } catch (err) {
     console.error('[PhonePe Initiate Exception]', err);
-    res.status(500).json({ message: err.message || 'Internal server error' });
+    res.status(500).json({ message: "We couldn't start the payment right now. Please try again in a moment." });
   }
 });
 
@@ -815,7 +819,7 @@ app.post('/api/phonepe/callback', async (req, res) => {
     res.status(200).json({ status: 'OK' });
   } catch (err) {
     console.error('[PhonePe Callback Exception]', err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -824,7 +828,7 @@ app.post('/api/phonepe/verify', authMiddleware, async (req, res) => {
   try {
     const { transactionId, plan } = req.body;
     if (!transactionId) {
-      return res.status(400).json({ message: 'Transaction ID required' });
+      return res.status(400).json({ message: 'We could not find your payment details. Please contact support if any amount was deducted.' });
     }
 
     const planKey = (plan || '').toLowerCase();
@@ -833,7 +837,7 @@ app.post('/api/phonepe/verify', authMiddleware, async (req, res) => {
     console.log(`[PhonePe Verify V2] Checking status for Order: ${transactionId}`);
 
     const user = await User.findById(req.userId);
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user) return res.status(404).json({ message: 'This profile could not be found.' });
 
     const planExpiry = new Date();
     planExpiry.setMonth(planExpiry.getMonth() + planInfo.months);
@@ -861,7 +865,7 @@ app.post('/api/phonepe/verify', authMiddleware, async (req, res) => {
     return res.json({ success: true, user: updatedUser });
   } catch (err) {
     console.error('[PhonePe Verify Exception]', err);
-    res.status(500).json({ message: 'Verification error' });
+    res.status(500).json({ message: PAYMENT_NOT_CONFIRMED });
   }
 });
 
@@ -873,11 +877,11 @@ app.get('/api/profile/:id', async (req, res) => {
     } else {
       user = await User.findOne({ memberId: req.params.id }).select('-password');
     }
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user) return res.status(404).json({ message: 'This profile could not be found.' });
     res.json(user);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -917,7 +921,7 @@ app.get('/api/showcase-profiles', async (req, res) => {
     res.json(users);
   } catch (err) {
     console.error('SHOWCASE PROFILES ERROR:', err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -961,7 +965,7 @@ app.get('/api/members', authMiddleware, async (req, res) => {
     res.json(users);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -973,7 +977,7 @@ app.get('/api/admin/users', authMiddleware, adminMiddleware, async (req, res) =>
     res.json(users);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -984,7 +988,7 @@ app.put('/api/admin/users/:id/status', authMiddleware, adminMiddleware, async (r
       return res.status(400).json({ message: 'Invalid status' });
     }
     const user = await User.findByIdAndUpdate(req.params.id, { status }, { new: true }).select('-password');
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user) return res.status(404).json({ message: 'This profile could not be found.' });
     
     // Send email notification based on status
     try {
@@ -1000,7 +1004,7 @@ app.put('/api/admin/users/:id/status', authMiddleware, adminMiddleware, async (r
     res.json(user);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -1009,18 +1013,18 @@ app.put('/api/admin/users/:id/plan', authMiddleware, adminMiddleware, async (req
   try {
     const { memberType, planExpiry } = req.body;
     if (!['Free', 'Basic', 'Premium', 'Elite'].includes(memberType)) {
-      return res.status(400).json({ message: 'Invalid plan type' });
+      return res.status(400).json({ message: 'Please choose a valid membership plan.' });
     }
     const updateData = { memberType };
     if (planExpiry) updateData.planExpiry = new Date(planExpiry);
 
     const user = await User.findByIdAndUpdate(req.params.id, updateData, { new: true }).select('-password');
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user) return res.status(404).json({ message: 'This profile could not be found.' });
 
     res.json(user);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -1028,7 +1032,7 @@ app.put('/api/admin/users/:id/plan', authMiddleware, adminMiddleware, async (req
 app.delete('/api/admin/users/:id', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(req.params.id);
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user) return res.status(404).json({ message: 'This profile could not be found.' });
     
     // Safely cleanup associated data
     await Connection.deleteMany({ $or: [{ senderId: user._id }, { receiverId: user._id }] });
@@ -1039,7 +1043,7 @@ app.delete('/api/admin/users/:id', authMiddleware, adminMiddleware, async (req, 
     res.json({ message: 'User deleted successfully' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error during deletion' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -1061,7 +1065,7 @@ app.post('/api/forgot-password', async (req, res) => {
     const emailRegex = new RegExp('^' + normalizedEmail.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i');
     const user = await User.findOne({ email: emailRegex });
     if (!user) {
-      return res.status(404).json({ message: 'User with this email does not exist' });
+      return res.status(404).json({ message: "We couldn't find an account with this email address. Please check it or register." });
     }
 
     // Generate 6 digit OTP
@@ -1077,7 +1081,7 @@ app.post('/api/forgot-password', async (req, res) => {
     res.json({ message: 'OTP sent successfully to your email address.' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -1089,7 +1093,7 @@ app.post('/api/verify-otp', async (req, res) => {
     const user = await User.findOne({ email: emailRegex });
 
     if (!user || !user.resetOtp || !user.resetOtpExpires || user.resetOtpExpires < Date.now()) {
-      return res.status(400).json({ message: 'Invalid or expired OTP' });
+      return res.status(400).json({ message: 'This verification code is invalid or has expired. Please request a new one.' });
     }
 
     if (user.resetOtpAttempts >= 3) {
@@ -1097,19 +1101,19 @@ app.post('/api/verify-otp', async (req, res) => {
       user.resetOtpExpires = undefined;
       user.resetOtpAttempts = 0;
       await user.save();
-      return res.status(400).json({ message: 'Maximum verification attempts exceeded. Please request a new OTP.' });
+      return res.status(400).json({ message: 'Too many incorrect attempts. Please request a new verification code.' });
     }
 
     if (user.resetOtp !== otp) {
       user.resetOtpAttempts = (user.resetOtpAttempts || 0) + 1;
       await user.save();
-      return res.status(400).json({ message: 'Invalid OTP' });
+      return res.status(400).json({ message: 'The verification code is incorrect. Please check it and try again.' });
     }
 
     res.json({ message: 'OTP verified successfully' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -1122,7 +1126,7 @@ app.post('/api/reset-password', async (req, res) => {
     const user = await User.findOne({ email: emailRegex });
 
     if (!user || !user.resetOtp || !user.resetOtpExpires || user.resetOtpExpires < Date.now()) {
-      return res.status(400).json({ message: 'Invalid or expired OTP' });
+      return res.status(400).json({ message: 'This verification code is invalid or has expired. Please request a new one.' });
     }
 
     if (user.resetOtpAttempts >= 3) {
@@ -1130,13 +1134,13 @@ app.post('/api/reset-password', async (req, res) => {
       user.resetOtpExpires = undefined;
       user.resetOtpAttempts = 0;
       await user.save();
-      return res.status(400).json({ message: 'Maximum verification attempts exceeded. Please request a new OTP.' });
+      return res.status(400).json({ message: 'Too many incorrect attempts. Please request a new verification code.' });
     }
 
     if (user.resetOtp !== otp) {
       user.resetOtpAttempts = (user.resetOtpAttempts || 0) + 1;
       await user.save();
-      return res.status(400).json({ message: 'Invalid OTP' });
+      return res.status(400).json({ message: 'The verification code is incorrect. Please check it and try again.' });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -1149,7 +1153,7 @@ app.post('/api/reset-password', async (req, res) => {
     res.json({ message: 'Password has been reset successfully' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -1160,7 +1164,7 @@ app.post('/api/reset-password', async (req, res) => {
 app.get('/api/user/interactions', authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.userId).select('shortlistedIds interestedIds ignoredIds');
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user) return res.status(404).json({ message: 'This profile could not be found.' });
     res.json({
       shortlistedIds: user.shortlistedIds || [],
       interestedIds: user.interestedIds || [],
@@ -1168,14 +1172,14 @@ app.get('/api/user/interactions', authMiddleware, async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
 app.post('/api/user/shortlist', authMiddleware, async (req, res) => {
   try {
     const { targetUserId, action } = req.body;
-    if (!targetUserId) return res.status(400).json({ message: 'targetUserId required' });
+    if (!targetUserId) return res.status(400).json({ message: 'Something was missing from your request. Please refresh the page and try again.' });
     const update = action === 'remove'
       ? { $pull: { shortlistedIds: targetUserId } }
       : { $addToSet: { shortlistedIds: targetUserId } };
@@ -1183,14 +1187,14 @@ app.post('/api/user/shortlist', authMiddleware, async (req, res) => {
     res.json({ shortlistedIds: user.shortlistedIds || [] });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
 app.post('/api/user/interest', authMiddleware, async (req, res) => {
   try {
     const { targetUserId, action } = req.body;
-    if (!targetUserId) return res.status(400).json({ message: 'targetUserId required' });
+    if (!targetUserId) return res.status(400).json({ message: 'Something was missing from your request. Please refresh the page and try again.' });
     const update = action === 'remove'
       ? { $pull: { interestedIds: targetUserId } }
       : { $addToSet: { interestedIds: targetUserId } };
@@ -1198,14 +1202,14 @@ app.post('/api/user/interest', authMiddleware, async (req, res) => {
     res.json({ interestedIds: user.interestedIds || [] });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
 app.post('/api/user/ignore', authMiddleware, async (req, res) => {
   try {
     const { targetUserId, action } = req.body;
-    if (!targetUserId) return res.status(400).json({ message: 'targetUserId required' });
+    if (!targetUserId) return res.status(400).json({ message: 'Something was missing from your request. Please refresh the page and try again.' });
     const update = action === 'remove'
       ? { $pull: { ignoredIds: targetUserId } }
       : { $addToSet: { ignoredIds: targetUserId } };
@@ -1213,7 +1217,7 @@ app.post('/api/user/ignore', authMiddleware, async (req, res) => {
     res.json({ ignoredIds: user.ignoredIds || [] });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -1223,7 +1227,7 @@ app.post('/api/user/ignore', authMiddleware, async (req, res) => {
 app.get('/api/conversations/:userId', authMiddleware, async (req, res) => {
   try {
     if (req.userId !== req.params.userId) {
-      return res.status(403).json({ message: 'Forbidden: Cannot access conversations of another user' });
+      return res.status(403).json({ message: 'You do not have permission to view these conversations.' });
     }
 
     const conversations = await Conversation.find({
@@ -1243,7 +1247,7 @@ app.get('/api/conversations/:userId', authMiddleware, async (req, res) => {
     res.json(convsWithUnread);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -1253,22 +1257,22 @@ app.post('/api/conversations', authMiddleware, async (req, res) => {
     const { senderId, receiverId } = req.body;
 
     if (req.userId !== senderId) {
-      return res.status(403).json({ message: 'Forbidden: Cannot start conversation on behalf of another user' });
+      return res.status(403).json({ message: 'You do not have permission to start this conversation.' });
     }
 
     const receiver = await User.findById(receiverId).select('gender');
-    if (!receiver) return res.status(404).json({ message: 'Receiver not found' });
+    if (!receiver) return res.status(404).json({ message: 'This profile could not be found.' });
 
     // Server-side plan check: Free users cannot initiate conversations
     const sender = await User.findById(senderId).select('memberType gender');
-    if (!sender) return res.status(404).json({ message: 'Sender not found' });
+    if (!sender) return res.status(404).json({ message: 'Your profile could not be found. Please log in again.' });
     if (sender.memberType === 'Free') {
       return res.status(403).json({ message: 'Upgrade your plan to start conversations.' });
     }
 
     // Enforce opposite gender check
     if (sender.gender === receiver.gender) {
-      return res.status(400).json({ message: 'Conversations can only be started between profiles of the opposite gender' });
+      return res.status(400).json({ message: 'Conversations can only be started with profiles of the opposite gender.' });
     }
 
     // Check if conversation already exists
@@ -1288,7 +1292,7 @@ app.post('/api/conversations', authMiddleware, async (req, res) => {
     res.json(conversation);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -1296,11 +1300,11 @@ app.post('/api/conversations', authMiddleware, async (req, res) => {
 app.get('/api/messages/:conversationId', authMiddleware, async (req, res) => {
   try {
     const conversation = await Conversation.findById(req.params.conversationId);
-    if (!conversation) return res.status(404).json({ message: 'Conversation not found' });
+    if (!conversation) return res.status(404).json({ message: 'This conversation is no longer available.' });
 
     const isParticipant = conversation.participants.some(p => p.toString() === req.userId);
     if (!isParticipant) {
-      return res.status(403).json({ message: 'Forbidden: You are not a participant in this conversation' });
+      return res.status(403).json({ message: 'You do not have access to this conversation.' });
     }
 
     const messages = await Message.find({
@@ -1309,7 +1313,7 @@ app.get('/api/messages/:conversationId', authMiddleware, async (req, res) => {
     res.json(messages);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -1319,20 +1323,20 @@ app.post('/api/messages', authMiddleware, async (req, res) => {
     const { conversationId, senderId, text } = req.body;
 
     if (req.userId !== senderId) {
-      return res.status(403).json({ message: 'Forbidden: Cannot send message as another user' });
+      return res.status(403).json({ message: 'You do not have permission to send this message.' });
     }
 
     const conversation = await Conversation.findById(conversationId);
-    if (!conversation) return res.status(404).json({ message: 'Conversation not found' });
+    if (!conversation) return res.status(404).json({ message: 'This conversation is no longer available.' });
 
     const isParticipant = conversation.participants.some(p => p.toString() === req.userId);
     if (!isParticipant) {
-      return res.status(403).json({ message: 'Forbidden: You are not a participant in this conversation' });
+      return res.status(403).json({ message: 'You do not have access to this conversation.' });
     }
 
     // Server-side plan check: Free users cannot send messages
     const sender = await User.findById(senderId).select('memberType');
-    if (!sender) return res.status(404).json({ message: 'Sender not found' });
+    if (!sender) return res.status(404).json({ message: 'Your profile could not be found. Please log in again.' });
     if (sender.memberType === 'Free') {
       return res.status(403).json({ message: 'Upgrade your plan to send messages.' });
     }
@@ -1349,7 +1353,7 @@ app.post('/api/messages', authMiddleware, async (req, res) => {
     res.status(201).json(message);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -1358,7 +1362,7 @@ app.put('/api/messages/read', authMiddleware, async (req, res) => {
   try {
     const { conversationId, userId } = req.body;
     if (req.userId !== userId) {
-      return res.status(403).json({ message: 'Forbidden' });
+      return res.status(403).json({ message: 'You do not have permission to perform this action.' });
     }
 
     await Message.updateMany(
@@ -1368,7 +1372,7 @@ app.put('/api/messages/read', authMiddleware, async (req, res) => {
     res.json({ message: 'Messages marked as read' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -1376,11 +1380,11 @@ app.put('/api/messages/read', authMiddleware, async (req, res) => {
 app.get('/api/user-by-member/:memberId', authMiddleware, async (req, res) => {
   try {
     const user = await User.findOne({ memberId: req.params.memberId }).select('-password');
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user) return res.status(404).json({ message: 'This profile could not be found.' });
     res.json(user);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -1391,18 +1395,18 @@ app.post('/api/connections/send', authMiddleware, async (req, res) => {
   try {
     const { senderId, receiverMemberId } = req.body;
     if (req.userId !== senderId) {
-      return res.status(403).json({ message: 'Forbidden: Cannot send interest on behalf of another user' });
+      return res.status(403).json({ message: 'You do not have permission to send this interest.' });
     }
 
     const receiver = await User.findOne({ memberId: receiverMemberId });
-    if (!receiver) return res.status(404).json({ message: 'User not found' });
-    if (receiver._id.toString() === senderId) return res.status(400).json({ message: 'Cannot send interest to yourself' });
+    if (!receiver) return res.status(404).json({ message: 'This profile could not be found.' });
+    if (receiver._id.toString() === senderId) return res.status(400).json({ message: 'You cannot send an interest to your own profile.' });
 
     // Enforce opposite gender check
     const sender = await User.findById(senderId).select('gender');
-    if (!sender) return res.status(404).json({ message: 'Sender not found' });
+    if (!sender) return res.status(404).json({ message: 'Your profile could not be found. Please log in again.' });
     if (sender.gender === receiver.gender) {
-      return res.status(400).json({ message: 'Interests can only be sent to profiles of the opposite gender' });
+      return res.status(400).json({ message: 'Interests can only be sent to profiles of the opposite gender.' });
     }
 
     // Check if connection already exists (in either direction)
@@ -1413,7 +1417,7 @@ app.post('/api/connections/send', authMiddleware, async (req, res) => {
       ]
     });
     if (existing) {
-      return res.status(400).json({ message: 'Interest already sent or received', connection: existing });
+      return res.status(400).json({ message: 'You have already exchanged interest with this member.', connection: existing });
     }
 
     const connection = new Connection({ senderId, receiverId: receiver._id });
@@ -1421,7 +1425,7 @@ app.post('/api/connections/send', authMiddleware, async (req, res) => {
     res.status(201).json(connection);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -1429,7 +1433,7 @@ app.post('/api/connections/send', authMiddleware, async (req, res) => {
 app.get('/api/connections/sent/:userId', authMiddleware, async (req, res) => {
   try {
     if (req.userId !== req.params.userId) {
-      return res.status(403).json({ message: 'Forbidden: Cannot view sent interests of another user' });
+      return res.status(403).json({ message: 'You do not have permission to view these interests.' });
     }
 
     const connections = await Connection.find({ senderId: req.params.userId })
@@ -1438,7 +1442,7 @@ app.get('/api/connections/sent/:userId', authMiddleware, async (req, res) => {
     res.json(connections);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -1446,7 +1450,7 @@ app.get('/api/connections/sent/:userId', authMiddleware, async (req, res) => {
 app.get('/api/connections/received/:userId', authMiddleware, async (req, res) => {
   try {
     if (req.userId !== req.params.userId) {
-      return res.status(403).json({ message: 'Forbidden: Cannot view received interests of another user' });
+      return res.status(403).json({ message: 'You do not have permission to view these interests.' });
     }
 
     const connections = await Connection.find({ receiverId: req.params.userId })
@@ -1455,7 +1459,7 @@ app.get('/api/connections/received/:userId', authMiddleware, async (req, res) =>
     res.json(connections);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -1463,10 +1467,10 @@ app.get('/api/connections/received/:userId', authMiddleware, async (req, res) =>
 app.put('/api/connections/:id/accept', authMiddleware, async (req, res) => {
   try {
     const connection = await Connection.findById(req.params.id);
-    if (!connection) return res.status(404).json({ message: 'Connection not found' });
+    if (!connection) return res.status(404).json({ message: 'This interest is no longer available.' });
 
     if (connection.receiverId.toString() !== req.userId) {
-      return res.status(403).json({ message: 'Forbidden: Only the receiver can accept this interest' });
+      return res.status(403).json({ message: 'Only the member who received this interest can accept it.' });
     }
 
     connection.status = 'accepted';
@@ -1486,7 +1490,7 @@ app.put('/api/connections/:id/accept', authMiddleware, async (req, res) => {
     res.json({ message: 'Interest accepted! You can now chat.', connection });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -1494,10 +1498,10 @@ app.put('/api/connections/:id/accept', authMiddleware, async (req, res) => {
 app.put('/api/connections/:id/decline', authMiddleware, async (req, res) => {
   try {
     const connection = await Connection.findById(req.params.id);
-    if (!connection) return res.status(404).json({ message: 'Connection not found' });
+    if (!connection) return res.status(404).json({ message: 'This interest is no longer available.' });
 
     if (connection.receiverId.toString() !== req.userId) {
-      return res.status(403).json({ message: 'Forbidden: Only the receiver can decline this interest' });
+      return res.status(403).json({ message: 'Only the member who received this interest can decline it.' });
     }
 
     connection.status = 'declined';
@@ -1505,7 +1509,7 @@ app.put('/api/connections/:id/decline', authMiddleware, async (req, res) => {
     res.json({ message: 'Interest declined', connection });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -1513,7 +1517,7 @@ app.put('/api/connections/:id/decline', authMiddleware, async (req, res) => {
 app.get('/api/connections/matches/:userId', authMiddleware, async (req, res) => {
   try {
     if (req.userId !== req.params.userId) {
-      return res.status(403).json({ message: 'Forbidden' });
+      return res.status(403).json({ message: 'You do not have permission to perform this action.' });
     }
 
     const matches = await Connection.find({
@@ -1526,7 +1530,7 @@ app.get('/api/connections/matches/:userId', authMiddleware, async (req, res) => 
     res.json(matches);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -1547,7 +1551,7 @@ app.get('/api/connections/status/:userId/:memberId', async (req, res) => {
     res.json({ status: connection.status, direction: connection.senderId.toString() === req.params.userId ? 'sent' : 'received', connectionId: connection._id });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -1557,11 +1561,11 @@ app.get('/api/connections/status/:userId/:memberId', async (req, res) => {
 app.put('/api/heartbeat', async (req, res) => {
   try {
     const { userId } = req.body;
-    if (!userId) return res.status(400).json({ message: 'userId required' });
+    if (!userId) return res.status(400).json({ message: 'Something was missing from your request. Please refresh the page and try again.' });
     await User.findByIdAndUpdate(userId, { lastSeen: new Date() });
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
 });
 
@@ -1573,8 +1577,27 @@ app.get('/api/online/:userId', async (req, res) => {
     const isOnline = (Date.now() - new Date(user.lastSeen).getTime()) < 60000; // 60 seconds
     res.json({ online: isOnline, lastSeen: user.lastSeen });
   } catch (err) {
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: SERVER_ERROR });
   }
+});
+
+// Unknown API routes
+app.use('/api', (req, res) => {
+  res.status(404).json({ message: 'The page you were looking for could not be found.' });
+});
+
+// Last-resort handler so unexpected failures (including malformed request
+// bodies) always return a friendly JSON message instead of an HTML error page.
+app.use((err, req, res, next) => {
+  console.error('UNHANDLED API ERROR:', req.method, req.originalUrl, err);
+  if (res.headersSent) return next(err);
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json({ message: 'We could not read your request. Please refresh the page and try again.' });
+  }
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({ message: 'That file or request is too large. Please try a smaller one.' });
+  }
+  res.status(500).json({ message: SERVER_ERROR });
 });
 
 if (process.env.NODE_ENV !== 'production') {

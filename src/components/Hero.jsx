@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { LeafCorner, FloatingDots, MandalaPattern } from './Decorative';
 import { ChevronDown, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { apiErrorMessage, errorMessage } from '../utils/errorMessages';
 
 const heroImages = [
   { src: "/images/hero-wedding.png", alt: "Traditional Wedding Ceremony" },
@@ -46,7 +47,7 @@ export default function Hero() {
     setError('');
     
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      setError('Passwords do not match. Please re-enter them.');
       return;
     }
     if (!religion || !caste) {
@@ -66,9 +67,9 @@ export default function Hero() {
       try {
         data = await res.json();
       } catch (err) {
-        throw new Error('Registration server unavailable. Please try again later.');
+        throw new Error("We couldn't complete your registration right now. Please try again in a moment.");
       }
-      if (!res.ok) throw new Error(data?.message || 'Registration failed. Please check your inputs.');
+      if (!res.ok) throw new Error(apiErrorMessage(res, data, 'We could not complete your registration. Please check your details and try again.'));
       
       localStorage.setItem('token', data.token);
       localStorage.setItem('userFilter', JSON.stringify({ religion, caste }));
@@ -84,7 +85,7 @@ export default function Hero() {
       
       navigate('/pending');
     } catch (err) {
-      setError(err.message);
+      setError(errorMessage(err));
     } finally {
       setIsLoading(false);
     }

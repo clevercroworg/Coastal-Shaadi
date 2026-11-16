@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import PageHeader from '../components/PageHeader';
 import { motion } from 'framer-motion';
 import { Mail, Send } from 'lucide-react';
+import { apiErrorMessage, CONNECTION_ERROR } from '../utils/errorMessages';
 
 export default function Contact() {
   const [formData, setFormData] = useState({ firstName: '', lastName: '', email: '', message: '' });
@@ -30,7 +31,7 @@ export default function Contact() {
       if (contentType && contentType.indexOf("application/json") !== -1) {
         data = await res.json();
       } else {
-        data = { message: 'The server encountered an unexpected error.' };
+        data = {};
       }
 
       if (res.ok) {
@@ -42,10 +43,10 @@ export default function Contact() {
           window.fbq('track', 'Contact');
         }
       } else {
-        setStatus({ type: 'error', message: data.message || 'Failed to send message.' });
+        setStatus({ type: 'error', message: apiErrorMessage(res, data, "We couldn't send your message right now. Please try again shortly, or email us directly.") });
       }
     } catch (err) {
-      setStatus({ type: 'error', message: 'A network error occurred. Please try again later.' });
+      setStatus({ type: 'error', message: CONNECTION_ERROR });
     } finally {
       setLoading(false);
     }

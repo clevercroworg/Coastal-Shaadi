@@ -3,6 +3,11 @@ import DashboardNavbar from '../components/DashboardNavbar';
 import { User, Mail, Phone, MapPin, Briefcase, GraduationCap, Map, Camera, Pencil, X, Check, Heart, Calendar, Ruler, Utensils, Shield, Globe, BookOpen, Loader2, ChevronLeft, ChevronRight, ShieldAlert } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { useMembers } from '../context/MemberContext';
+import { assertOk, errorMessage } from '../utils/errorMessages';
+
+const PHOTO_UPLOAD_ERROR = "We couldn't upload your photo right now. Please check your internet connection and try again.";
+const PHOTO_REMOVE_ERROR = "We couldn't remove your photo right now. Please try again in a moment.";
+const PROFILE_SAVE_ERROR = "We couldn't save your changes right now. Please try again in a moment.";
 import { motion, AnimatePresence } from 'framer-motion';
 
 const maxDate = new Date();
@@ -163,7 +168,7 @@ export default function MyProfile() {
     setIsUploading(true);
     try {
       const sigRes = await fetch(`/api/cloudinary-signature`);
-      if (!sigRes.ok) throw new Error('Cloudinary signature fetch failed');
+      if (!sigRes.ok) throw new Error(PHOTO_UPLOAD_ERROR);
       const { timestamp, signature, apiKey, cloudName } = await sigRes.json();
 
       const formData = new FormData();
@@ -177,8 +182,9 @@ export default function MyProfile() {
         body: formData
       });
 
-      if (!response.ok) throw new Error('Cloudinary upload failed');
+      if (!response.ok) throw new Error(PHOTO_UPLOAD_ERROR);
       const data = await response.json();
+      if (!data.secure_url) throw new Error(PHOTO_UPLOAD_ERROR);
       
       if (data.secure_url) {
         const newImages = [...additionalImages];
@@ -193,9 +199,7 @@ export default function MyProfile() {
             body: JSON.stringify({ userId: actualUserId, additionalImages: cleanedImages })
           });
           
-          if (!updateRes.ok) {
-            throw new Error('Failed to update profile in database');
-          }
+          await assertOk(updateRes, PHOTO_UPLOAD_ERROR);
 
           const newUserData = { ...JSON.parse(localStorage.getItem('userProfile') || '{}'), additionalImages: cleanedImages };
           localStorage.setItem('userProfile', JSON.stringify(newUserData));
@@ -206,7 +210,7 @@ export default function MyProfile() {
       }
     } catch (error) {
       console.error("Error uploading photo:", error);
-      showToast(error.message || 'Upload failed. Please try again.', 'error');
+      showToast(errorMessage(error, PHOTO_UPLOAD_ERROR), 'error');
     } finally {
       setIsUploading(false);
     }
@@ -224,9 +228,7 @@ export default function MyProfile() {
           body: JSON.stringify({ userId: actualUserId, additionalImages: newImages })
         });
         
-        if (!updateRes.ok) {
-          throw new Error('Failed to remove photo in database');
-        }
+        await assertOk(updateRes, PHOTO_REMOVE_ERROR);
 
         const newUserData = { ...JSON.parse(localStorage.getItem('userProfile') || '{}'), additionalImages: newImages };
         localStorage.setItem('userProfile', JSON.stringify(newUserData));
@@ -236,7 +238,7 @@ export default function MyProfile() {
       }
     } catch (error) {
       console.error("Error removing photo:", error);
-      showToast('Removal failed. Please try again.', 'error');
+      showToast(errorMessage(error, PHOTO_REMOVE_ERROR), 'error');
     } finally {
       setIsUploading(false);
     }
@@ -310,12 +312,12 @@ export default function MyProfile() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify({ userId: actualUserId, whatsappNumber, whatsappConsent })
       });
-      if (!res.ok) throw new Error('Failed to save');
+      await assertOk(res, PROFILE_SAVE_ERROR);
       const newUserData = { ...JSON.parse(localStorage.getItem('userProfile') || '{}'), whatsappNumber, whatsappConsent };
       localStorage.setItem('userProfile', JSON.stringify(newUserData));
       showToast('WhatsApp settings saved!', 'success');
     } catch (err) {
-      showToast('Failed to save WhatsApp settings. Please try again.', 'error');
+      showToast(errorMessage(err, PROFILE_SAVE_ERROR), 'error');
     } finally {
       setIsSavingWhatsapp(false);
     }
@@ -374,6 +376,9 @@ export default function MyProfile() {
   };
 
   const saveEdit = async () => {
+    const previousProfile = profile;
+    const previousSection = editSection;
+    const pendingEdits = editData;
     const updatedProfile = { ...profile, ...editData };
     setProfile(updatedProfile);
     setEditSection(null);
@@ -390,19 +395,19 @@ export default function MyProfile() {
           body: JSON.stringify({ userId: actualUserId, profileData: cleanEditData })
         });
         
-        if (!updateRes.ok) {
-          let errData;
-          try { errData = await updateRes.json(); } catch { errData = { message: 'Server is currently unavailable.' }; }
-          throw new Error(errData.message);
-        }
-        
+        await assertOk(updateRes, PROFILE_SAVE_ERROR);
+
         const newUserData = { ...userData, profileData: { ...userData.profileData, ...editData } };
         localStorage.setItem('userProfile', JSON.stringify(newUserData));
         showToast('Profile saved successfully!', 'success');
         fetchLatestProfile();
       } catch (err) {
         console.error('Failed to save to database', err);
-        showToast('Failed to save profile. Please try again.', 'error');
+        // Reopen the form with the member's edits so nothing they typed is lost
+        setProfile(previousProfile);
+        setEditSection(previousSection);
+        setEditData(pendingEdits);
+        showToast(errorMessage(err, PROFILE_SAVE_ERROR), 'error');
       }
     }
   };
@@ -421,6 +426,7 @@ export default function MyProfile() {
     if (!file) return;
 
     // Local preview for immediate feedback
+    const previousImage = profileImage;
     const objectUrl = URL.createObjectURL(file);
     setProfileImage(objectUrl);
     setIsUploading(true);
@@ -438,7 +444,7 @@ export default function MyProfile() {
       try {
         sigData = await sigRes.json();
       } catch (err) {
-        throw new Error('Image upload server unavailable. Please try again later.');
+        throw new Error(PHOTO_UPLOAD_ERROR);
       }
       const { timestamp, signature, apiKey, cloudName } = sigData;
 
@@ -457,7 +463,8 @@ export default function MyProfile() {
         body: formData
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
+      if (!data.secure_url) throw new Error(PHOTO_UPLOAD_ERROR);
       if (data.secure_url) {
         setProfileImage(data.secure_url);
         const actualUserId = userData?.id || userData?._id || userData?.memberId;
@@ -468,11 +475,7 @@ export default function MyProfile() {
             body: JSON.stringify({ userId: actualUserId, image: data.secure_url })
           });
           
-          if (!updateRes.ok) {
-             let errData;
-             try { errData = await updateRes.json(); } catch { errData = { message: 'Database connection failed.' }; }
-             throw new Error(errData.message || 'Failed to update profile in database');
-          }
+          await assertOk(updateRes, PHOTO_UPLOAD_ERROR);
 
           const newUserData = { ...JSON.parse(localStorage.getItem('userProfile') || '{}'), image: data.secure_url };
           localStorage.setItem('userProfile', JSON.stringify(newUserData));
@@ -482,7 +485,8 @@ export default function MyProfile() {
       }
     } catch (error) {
       console.error("Error uploading to Cloudinary", error);
-      showToast('Upload failed. Please try again.', 'error');
+      setProfileImage(previousImage);
+      showToast(errorMessage(error, PHOTO_UPLOAD_ERROR), 'error');
     } finally {
       setIsUploading(false);
     }
@@ -490,6 +494,7 @@ export default function MyProfile() {
 
   const handleRemoveImage = async () => {
     setIsUploading(true);
+    const previousImage = profileImage;
     try {
       setProfileImage(null);
       const actualUserId = userData?.id || userData?._id || userData?.memberId;
@@ -500,11 +505,7 @@ export default function MyProfile() {
           body: JSON.stringify({ userId: actualUserId, image: null })
         });
         
-        if (!updateRes.ok) {
-           let errData;
-           try { errData = await updateRes.json(); } catch { errData = { message: 'Database connection failed.' }; }
-           throw new Error(errData.message || 'Failed to remove profile image in database');
-        }
+        await assertOk(updateRes, PHOTO_REMOVE_ERROR);
 
         const newUserData = { ...JSON.parse(localStorage.getItem('userProfile') || '{}'), image: null };
         localStorage.setItem('userProfile', JSON.stringify(newUserData));
@@ -513,7 +514,8 @@ export default function MyProfile() {
       }
     } catch (error) {
       console.error("Error removing image", error);
-      showToast('Remove failed. Please try again.', 'error');
+      setProfileImage(previousImage);
+      showToast(errorMessage(error, PHOTO_REMOVE_ERROR), 'error');
     } finally {
       setIsUploading(false);
     }

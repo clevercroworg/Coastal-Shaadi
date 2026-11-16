@@ -3,6 +3,11 @@ import DashboardNavbar from '../components/DashboardNavbar';
 import FullProfileModal from '../components/FullProfileModal';
 import { Heart, Send, Inbox, Users, Check, X, MessageCircle, User, Loader2, Clock, ExternalLink } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
+import { assertOk, errorMessage } from '../utils/errorMessages';
+
+const ACCEPT_ERROR = "We couldn't accept this interest right now. Please try again in a moment.";
+const DECLINE_ERROR = "We couldn't decline this interest right now. Please try again in a moment.";
+const PROFILE_LOAD_ERROR = "We couldn't open this profile right now. Please try again in a moment.";
 
 export default function Interests() {
   const [activeTab, setActiveTab] = useState('received');
@@ -48,26 +53,24 @@ export default function Interests() {
   const handleAccept = async (connectionId) => {
     try {
       const res = await fetch(`/api/connections/${connectionId}/accept`, { method: 'PUT', ...authHeaders });
-      if (res.ok) {
-        fetchData();
-        showToast('Interest accepted! You can now chat.', 'success');
-      }
+      await assertOk(res, ACCEPT_ERROR);
+      fetchData();
+      showToast('Interest accepted! You can now chat.', 'success');
     } catch (err) {
       console.error('Failed to accept', err);
-      showToast('Failed to accept interest', 'error');
+      showToast(errorMessage(err, ACCEPT_ERROR), 'error');
     }
   };
 
   const handleDecline = async (connectionId) => {
     try {
       const res = await fetch(`/api/connections/${connectionId}/decline`, { method: 'PUT', ...authHeaders });
-      if (res.ok) {
-        fetchData();
-        showToast('Interest declined', 'success');
-      }
+      await assertOk(res, DECLINE_ERROR);
+      fetchData();
+      showToast('Interest declined.', 'success');
     } catch (err) {
       console.error('Failed to decline', err);
-      showToast('Failed to decline interest', 'error');
+      showToast(errorMessage(err, DECLINE_ERROR), 'error');
     }
   };
 
@@ -90,6 +93,7 @@ export default function Interests() {
       // Fetch full member data to populate the modal
       const memberId = user.memberId || user._id;
       const res = await fetch(`/api/user-by-member/${memberId}`, authHeaders);
+      await assertOk(res, PROFILE_LOAD_ERROR);
       if (res.ok) {
         const fullUser = await res.json();
         setSelectedMember({
@@ -116,7 +120,7 @@ export default function Interests() {
       }
     } catch (err) {
       console.error('Failed to fetch member profile', err);
-      showToast('Failed to load profile', 'error');
+      showToast(errorMessage(err, PROFILE_LOAD_ERROR), 'error');
     }
   };
 

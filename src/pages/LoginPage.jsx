@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { X } from 'lucide-react';
+import { apiErrorMessage, errorMessage } from '../utils/errorMessages';
 
 const maxDate = new Date();
 maxDate.setFullYear(maxDate.getFullYear() - 18);
@@ -69,7 +70,7 @@ export default function LoginPage() {
     try {
       if (isRegister) {
         if (formData.password !== formData.confirmPassword) {
-          setError('Passwords do not match');
+          setError('Passwords do not match. Please re-enter them.');
           setIsLoading(false);
           return;
         }
@@ -89,9 +90,9 @@ export default function LoginPage() {
         try {
           data = await res.json();
         } catch (err) {
-          throw new Error('Registration server unavailable. Please try again later.');
+          throw new Error("We couldn't complete your registration right now. Please try again in a moment.");
         }
-        if (!res.ok) throw new Error(data?.message || 'Registration failed. Please check your inputs.');
+        if (!res.ok) throw new Error(apiErrorMessage(res, data, 'We could not complete your registration. Please check your details and try again.'));
         
         localStorage.setItem('token', data.token);
         localStorage.setItem('userFilter', JSON.stringify({ religion, caste }));
@@ -133,9 +134,9 @@ export default function LoginPage() {
         try {
           data = await res.json();
         } catch (err) {
-          throw new Error('Login server unavailable. Please check your connection and try again.');
+          throw new Error("We couldn't sign you in right now. Please try again in a moment.");
         }
-        if (!res.ok) throw new Error(data?.message || 'Login failed. Invalid email or password.');
+        if (!res.ok) throw new Error(apiErrorMessage(res, data, 'Login failed. Invalid email or password.'));
         
         if (data.user.role === 'admin') {
           throw new Error('Admins must use the dedicated admin login portal.');
@@ -169,7 +170,7 @@ export default function LoginPage() {
         }
       }
     } catch (err) {
-      setError(err.message);
+      setError(errorMessage(err));
     } finally {
       setIsLoading(false);
     }

@@ -2,6 +2,7 @@ import React from 'react';
 import { User, Heart, Star, Ban, MessageCircle, Lock } from 'lucide-react';
 import { useMembers } from '../context/MemberContext';
 import { useToast } from '../context/ToastContext';
+import { apiErrorMessage, errorMessage } from '../utils/errorMessages';
 
 export default function MemberCard({ member, onUpgradePrompt, onViewProfile }) {
   const { shortlistedIds, interestedIds, ignoredIds, toggleShortlist, toggleInterest, toggleIgnore } = useMembers();
@@ -135,9 +136,9 @@ export default function MemberCard({ member, onUpgradePrompt, onViewProfile }) {
                   toggleInterest(member.id);
                   showToast('Interest sent successfully! ❤️', 'success');
                 } else {
-                  showToast(data?.message || 'Could not send interest. Please try again.', 'error');
+                  showToast(apiErrorMessage(res, data, "We couldn't send your interest right now. Please try again in a moment."), 'error');
                 }
-              } catch(err) { showToast('Connection failed. Please try again.', 'error'); }
+              } catch(err) { showToast(errorMessage(err), 'error'); }
             }}
             className={`flex flex-col items-center gap-1 transition-colors ${isInterested ? 'text-primary' : 'hover:text-primary'}`}
           >

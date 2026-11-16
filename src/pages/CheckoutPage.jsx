@@ -3,6 +3,10 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Check, Crown, Sparkles, Zap, Star, ArrowLeft, Shield, Lock, CreditCard, Phone, Mail, User, ChevronRight, X } from 'lucide-react';
 import { useMembers } from '../context/MemberContext';
+import { apiErrorMessage, errorMessage } from '../utils/errorMessages';
+
+const paymentNotConfirmed = (paymentId) =>
+  `We could not confirm your payment yet. If any amount was deducted, please don't worry: contact our support team${paymentId ? ` with Payment ID ${paymentId}` : ''} and we will activate your plan right away.`;
 
 const planData = {
   basic: {
@@ -186,17 +190,17 @@ export default function CheckoutPage() {
                   })
                 });
 
-                const verifyData = await verifyRes.json();
+                const verifyData = await verifyRes.json().catch(() => ({}));
                 if (verifyRes.ok && verifyData.user) {
                   const updatedProfile = { ...userProfile, ...verifyData.user };
                   localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
                   window.dispatchEvent(new Event('profileUpdated'));
                   setSuccess(true);
                 } else {
-                  setError(verifyData.message || 'Payment verification failed.');
+                  setError(apiErrorMessage(verifyRes, verifyData, paymentNotConfirmed(response.razorpay_payment_id)));
                 }
               } catch (err) {
-                setError('Payment verification failed. Please contact support.');
+                setError(paymentNotConfirmed(response.razorpay_payment_id));
               } finally {
                 setVerifying(false);
                 setLoading(false);
@@ -223,7 +227,7 @@ export default function CheckoutPage() {
           setLoading(false);
           return;
         } else {
-          throw new Error(data.message || 'Failed to initiate payment. Please try again.');
+          throw new Error("We couldn't start the payment right now. Please try again in a moment.");
         }
       } else if (paymentMethod === 'manual') {
         const whatsappUrl = `https://wa.me/918861002191?text=${encodeURIComponent(
@@ -235,7 +239,7 @@ export default function CheckoutPage() {
     } catch (err) {
       console.error('Payment error:', err);
       if (mountedRef.current) {
-        setError(err.message || 'Something went wrong. Please try again.');
+        setError(errorMessage(err, "We couldn't start the payment right now. Please check your internet connection and try again."));
         setLoading(false);
       }
     }
@@ -441,13 +445,13 @@ export default function CheckoutPage() {
 
               {/* Error Message */}
               {error && (
-                <div className="mt-4 bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-start gap-3">
-                  <div className="w-5 h-5 bg-red-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
-                    <X size={12} className="text-red-600" />
+                <div role="alert" className="mt-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
+                  <div className="w-5 h-5 bg-amber-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                    <Shield size={12} className="text-amber-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-red-800">Payment Failed</p>
-                    <p className="text-xs text-red-600 mt-0.5">{error}</p>
+                    <p className="text-sm font-semibold text-amber-900">Payment not completed</p>
+                    <p className="text-xs text-amber-800 mt-0.5">{error}</p>
                   </div>
                 </div>
               )}

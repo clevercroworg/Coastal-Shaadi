@@ -2,6 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import DashboardNavbar from '../components/DashboardNavbar';
 import { Send, Search, User, Smile, Check, CheckCheck, MessageSquarePlus, Loader2, ChevronLeft } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
+import { assertOk, errorMessage } from '../utils/errorMessages';
+
+const SEND_ERROR = "Your message wasn't sent. Please check your connection and try again.";
+const OPEN_CHAT_ERROR = "We couldn't open this conversation right now. Please try again in a moment.";
 
 export default function Messaging() {
   const [conversations, setConversations] = useState([]);
@@ -165,7 +169,7 @@ export default function Messaging() {
       const userRes = await fetch(`/api/user-by-member/${memberId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (!userRes.ok) return;
+      await assertOk(userRes, OPEN_CHAT_ERROR);
       const targetUser = await userRes.json();
 
       // Create or get conversation
@@ -177,13 +181,13 @@ export default function Messaging() {
         },
         body: JSON.stringify({ senderId: currentUserId, receiverId: targetUser._id })
       });
-      if (convRes.ok) {
-        const conv = await convRes.json();
-        setActiveConvId(conv._id);
-        fetchConversations();
-      }
+      await assertOk(convRes, OPEN_CHAT_ERROR);
+      const conv = await convRes.json();
+      setActiveConvId(conv._id);
+      fetchConversations();
     } catch (err) {
       console.error('Failed to start chat', err);
+      showToast(errorMessage(err, OPEN_CHAT_ERROR), 'error');
     }
   };
 
@@ -208,7 +212,7 @@ export default function Messaging() {
 
     const token = localStorage.getItem('token');
     try {
-      await fetch('/api/messages', {
+      const res = await fetch('/api/messages', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -216,10 +220,15 @@ export default function Messaging() {
         },
         body: JSON.stringify({ conversationId: activeConvId, senderId: currentUserId, text })
       });
+      await assertOk(res, SEND_ERROR);
       fetchMessages(activeConvId);
       fetchConversations();
     } catch (err) {
       console.error('Failed to send message', err);
+      // Take back the unsent message and return the text so it can be resent
+      setMessages(prev => prev.filter(m => m._id !== optimisticMsg._id));
+      setMessageText(current => current || text);
+      showToast(errorMessage(err, SEND_ERROR), 'error');
     }
   };
 

@@ -1,4 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import { useToast } from './ToastContext';
+import { assertOk, errorMessage } from '../utils/errorMessages';
+
+const listUpdateError = (label) => `We couldn't update your ${label} right now. Please try again in a moment.`;
 
 export const citiesByState = {
   'Karnataka': [
@@ -97,6 +101,7 @@ const MemberContext = createContext();
 export const useMembers = () => useContext(MemberContext);
 
 export const MemberProvider = ({ children }) => {
+  const { showToast } = useToast();
   const [members, setMembers] = useState([]);
   const [shortlistedIds, setShortlistedIds] = useState(() => {
     try { return JSON.parse(localStorage.getItem('shortlistedIds') || '[]'); } catch { return []; }
@@ -233,9 +238,13 @@ export const MemberProvider = ({ children }) => {
           };
         });
         setMembers(formattedMembers);
+      } else if (response.status !== 401) {
+        // 401 is handled by syncUserProfile, which signs the member out
+        showToast("We couldn't load member profiles right now. Please refresh the page in a moment.", 'warning');
       }
     } catch (error) {
       console.error("Failed to fetch members", error);
+      showToast("We couldn't load member profiles. Please check your internet connection and refresh the page.", 'warning');
     } finally {
       setIsLoading(false);
     }
@@ -282,7 +291,7 @@ export const MemberProvider = ({ children }) => {
 
     try {
       const token = localStorage.getItem('token');
-      await fetch('/api/user/shortlist', {
+      const res = await fetch('/api/user/shortlist', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -290,8 +299,11 @@ export const MemberProvider = ({ children }) => {
         },
         body: JSON.stringify({ targetUserId: id, action: isShortlisted ? 'remove' : 'add' })
       });
+      await assertOk(res, listUpdateError('shortlist'));
     } catch (err) {
       console.error("Failed to save shortlist", err);
+      setShortlistedIds(shortlistedIds);
+      showToast(errorMessage(err, listUpdateError('shortlist')), 'error');
     }
   };
 
@@ -305,7 +317,7 @@ export const MemberProvider = ({ children }) => {
 
     try {
       const token = localStorage.getItem('token');
-      await fetch('/api/user/interest', {
+      const res = await fetch('/api/user/interest', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -313,8 +325,11 @@ export const MemberProvider = ({ children }) => {
         },
         body: JSON.stringify({ targetUserId: id, action: isInterested ? 'remove' : 'add' })
       });
+      await assertOk(res, listUpdateError('interests'));
     } catch (err) {
       console.error("Failed to save interest", err);
+      setInterestedIds(interestedIds);
+      showToast(errorMessage(err, listUpdateError('interests')), 'error');
     }
   };
 
@@ -328,7 +343,7 @@ export const MemberProvider = ({ children }) => {
 
     try {
       const token = localStorage.getItem('token');
-      await fetch('/api/user/ignore', {
+      const res = await fetch('/api/user/ignore', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -336,8 +351,11 @@ export const MemberProvider = ({ children }) => {
         },
         body: JSON.stringify({ targetUserId: id, action: isIgnored ? 'remove' : 'add' })
       });
+      await assertOk(res, listUpdateError('ignore list'));
     } catch (err) {
       console.error("Failed to save ignore", err);
+      setIgnoredIds(ignoredIds);
+      showToast(errorMessage(err, listUpdateError('ignore list')), 'error');
     }
   };
 

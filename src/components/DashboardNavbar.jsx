@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, User, Heart, Star, Ban, MessageCircle, LogOut, ChevronRight } from 'lucide-react';
+import { useUnreadMessages, messagesLink } from '../context/UnreadMessagesContext';
 
 export default function DashboardNavbar() {
-  const [unreadMsgCount, setUnreadMsgCount] = useState(0);
+  const { unreadCount: unreadMsgCount, latestUnreadConversationId } = useUnreadMessages();
   const [pendingInterestCount, setPendingInterestCount] = useState(0);
   const scrollContainerRef = useRef(null);
   const [showRightShadow, setShowRightShadow] = useState(true);
@@ -23,14 +24,6 @@ export default function DashboardNavbar() {
         const userProfile = JSON.parse(userProfileStr);
         const userId = userProfile.id || userProfile._id;
         const authHeaders = { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } };
-
-        // Fetch Conversations for unread counts
-        const resConvs = await fetch(`/api/conversations/${userId}`, authHeaders);
-        if (resConvs.ok) {
-          const convs = await resConvs.json();
-          const totalUnread = convs.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
-          setUnreadMsgCount(totalUnread);
-        }
 
         // Fetch received interests for pending counts
         const resInt = await fetch(`/api/connections/received/${userId}`, authHeaders);
@@ -63,7 +56,7 @@ export default function DashboardNavbar() {
     { name: 'My Profile', path: '/profile', icon: <User className="w-4 h-4" /> },
     { name: 'My Interest', path: '/interests', icon: <Heart className="w-4 h-4" />, badgeCount: pendingInterestCount },
     { name: 'Shortlist', path: '/shortlist', icon: <Star className="w-4 h-4" /> },
-    { name: 'Messaging', path: '/messaging', icon: <MessageCircle className="w-4 h-4" />, badgeCount: unreadMsgCount },
+    { name: 'Messaging', path: '/messaging', to: messagesLink(latestUnreadConversationId), icon: <MessageCircle className="w-4 h-4" />, badgeCount: unreadMsgCount },
     { name: 'Ignored User List', path: '/ignored', icon: <Ban className="w-4 h-4" /> },
   ];
 
@@ -81,7 +74,7 @@ export default function DashboardNavbar() {
             {links.map((link) => (
               <NavLink
                 key={link.path}
-                to={link.path}
+                to={link.to || link.path}
                 className={({ isActive }) =>
                   `flex items-center gap-2 whitespace-nowrap transition-all duration-200 px-4 h-full border-b-2 ${
                     isActive
@@ -92,8 +85,8 @@ export default function DashboardNavbar() {
               >
                 {link.icon} {link.name}
                 {link.badgeCount > 0 && (
-                  <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-1 min-w-[18px] text-center">
-                    {link.badgeCount}
+                  <span className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-1 min-w-[18px] text-center">
+                    {link.badgeCount > 99 ? '99+' : link.badgeCount}
                   </span>
                 )}
               </NavLink>

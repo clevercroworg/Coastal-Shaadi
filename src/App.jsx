@@ -29,6 +29,7 @@ import CheckoutPage from './pages/CheckoutPage';
 // Context
 import { MemberProvider } from './context/MemberContext';
 import { ToastProvider, useToast } from './context/ToastContext';
+import { UnreadMessagesProvider } from './context/UnreadMessagesContext';
 
 // Auth Guard
 import ProtectedRoute from './components/ProtectedRoute';
@@ -108,10 +109,12 @@ function App() {
   return (
     <ToastProvider>
       <MemberProvider>
-        <BrowserRouter>
-          <ScrollToTop />
-          <AppContent />
-        </BrowserRouter>
+        <UnreadMessagesProvider>
+          <BrowserRouter>
+            <ScrollToTop />
+            <AppContent />
+          </BrowserRouter>
+        </UnreadMessagesProvider>
       </MemberProvider>
     </ToastProvider>
   );

@@ -1,12 +1,26 @@
 import { useState, useEffect } from 'react';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
+import { useUnreadMessages, messagesLink } from '../context/UnreadMessagesContext';
+
+const UnreadBadge = ({ count, className = '' }) => (
+  count > 0 ? (
+    <span
+      aria-label={`${count} unread message${count === 1 ? '' : 's'}`}
+      className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-bold leading-none shadow-sm ${className}`}
+    >
+      {count > 99 ? '99+' : count}
+    </span>
+  ) : null
+);
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isLoggedIn = !!localStorage.getItem('token');
+  const { unreadCount, latestUnreadConversationId } = useUnreadMessages();
+  const messagesPath = messagesLink(latestUnreadConversationId);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -33,7 +47,7 @@ export default function Navbar() {
 
   if (isLoggedIn) {
     links.splice(2, 0, { name: 'My Profile', path: '/profile' });
-    links.splice(4, 0, { name: 'Messages', path: '/messaging' });
+    links.splice(4, 0, { name: 'Messages', path: '/messaging', to: messagesPath, badge: unreadCount });
   }
 
   // Pages with dark hero backgrounds where transparent navbar works
@@ -68,14 +82,15 @@ export default function Navbar() {
             {links.map((item) => (
               <Link
                 key={item.name}
-                to={item.path}
-                className={`text-sm font-semibold px-4 py-2 rounded-full relative group transition-all duration-300 ${
+                to={item.to || item.path}
+                className={`text-sm font-semibold px-4 py-2 rounded-full relative group inline-flex items-center transition-all duration-300 ${
                   location.pathname === item.path
                     ? (isScrolledOrSolid ? 'text-primary bg-primary/5' : 'text-accent bg-white/10 backdrop-blur-md')
                     : (isScrolledOrSolid ? 'text-gray-700 hover:text-primary hover:bg-gray-50' : 'text-white/90 hover:text-white hover:bg-white/5')
                 }`}
               >
                 {item.name}
+                <UnreadBadge count={item.badge} className="ml-1.5" />
                 <span className={`absolute bottom-1 left-4 h-0.5 bg-accent transition-all duration-300 ${location.pathname === item.path ? 'w-[calc(100%-32px)]' : 'w-0 group-hover:w-[calc(100%-32px)]'}`} />
               </Link>
             ))}
@@ -93,6 +108,17 @@ export default function Navbar() {
 
           {/* Mobile */}
           <div className="lg:hidden flex items-center gap-3">
+            {isLoggedIn && (
+              <Link
+                to={messagesPath}
+                onClick={() => setMobileMenuOpen(false)}
+                aria-label={unreadCount > 0 ? `Messages, ${unreadCount} unread` : 'Messages'}
+                className="relative p-1"
+              >
+                <MessageCircle size={24} className={isScrolledOrSolid ? 'text-gray-900' : 'text-white'} />
+                <UnreadBadge count={unreadCount} className="absolute -top-1 -right-1.5 ring-2 ring-white" />
+              </Link>
+            )}
             {!isLoggedIn && (
               <Link to="/login" className={`px-5 py-2 rounded-full text-xs font-semibold shadow transition-all duration-300 ${isScrolledOrSolid ? 'bg-primary text-white' : 'bg-white/20 text-white backdrop-blur-sm border border-white/30 hover:bg-white/30'}`}>
                 Login
@@ -126,15 +152,16 @@ export default function Navbar() {
                   transition={{ delay: i * 0.05 }}
                 >
                   <Link
-                    to={item.path}
+                    to={item.to || item.path}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`block px-4 py-3 font-medium rounded-lg transition-colors ${
+                    className={`flex items-center justify-between px-4 py-3 font-medium rounded-lg transition-colors ${
                       location.pathname === item.path
                         ? 'text-primary bg-primary/10'
                         : 'text-gray-800 hover:text-primary hover:bg-primary/5'
                     }`}
                   >
                     {item.name}
+                    <UnreadBadge count={item.badge} />
                   </Link>
                 </motion.div>
               ))}

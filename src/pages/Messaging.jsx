@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import DashboardNavbar from '../components/DashboardNavbar';
 import { Send, Search, User, Smile, Check, CheckCheck, MessageSquarePlus, Loader2, ChevronLeft } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
@@ -21,6 +22,8 @@ export default function Messaging() {
   const { showToast } = useToast();
   const pollRef = useRef(null);
   const [contactOnline, setContactOnline] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedConversationId = searchParams.get('conversation');
 
   // Get logged-in user from localStorage
   const getUserData = () => {
@@ -94,9 +97,11 @@ export default function Messaging() {
       const res = await fetch(`/api/messages/${convId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      let hadUnread = false;
       if (res.ok) {
         const data = await res.json().catch(() => []);
         setMessages(data);
+        hadUnread = Array.isArray(data) && data.some(m => !m.read && m.senderId !== currentUserId);
       }
       // Mark messages as read
       await fetch('/api/messages/read', {
@@ -107,6 +112,8 @@ export default function Messaging() {
         },
         body: JSON.stringify({ conversationId: convId, userId: currentUserId })
       });
+      // Clear the unread badge in the navigation straight away
+      if (hadUnread) window.dispatchEvent(new Event('messagesRead'));
       // Refresh conversations to update unread counts
       if (!isPolling) fetchConversations();
     } catch (err) {
@@ -115,6 +122,16 @@ export default function Messaging() {
       if (!isPolling) setIsLoadingMsgs(false);
     }
   };
+
+  // Open the conversation from a notification link (?conversation=<id>). Only
+  // conversations in this member's own list are opened; anything else is ignored.
+  useEffect(() => {
+    if (!requestedConversationId || isLoadingConvs) return;
+    if (conversations.some(c => c._id === requestedConversationId)) {
+      setActiveConvId(requestedConversationId);
+    }
+    setSearchParams({}, { replace: true });
+  }, [requestedConversationId, conversations, isLoadingConvs, setSearchParams]);
 
   const conversationsRef = useRef(conversations);
   useEffect(() => {

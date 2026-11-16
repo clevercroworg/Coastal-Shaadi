@@ -22,15 +22,16 @@ export default function Interests() {
   };
   const userData = getUserData();
   const currentUserId = userData?.id;
+  const authHeaders = { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } };
 
   const fetchData = async () => {
     if (!currentUserId) return;
     setIsLoading(true);
     try {
       const [sentRes, receivedRes, matchesRes] = await Promise.all([
-        fetch(`/api/connections/sent/${currentUserId}`),
-        fetch(`/api/connections/received/${currentUserId}`),
-        fetch(`/api/connections/matches/${currentUserId}`)
+        fetch(`/api/connections/sent/${currentUserId}`, authHeaders),
+        fetch(`/api/connections/received/${currentUserId}`, authHeaders),
+        fetch(`/api/connections/matches/${currentUserId}`, authHeaders)
       ]);
       if (sentRes.ok) setSentInterests(await sentRes.json());
       if (receivedRes.ok) setReceivedInterests(await receivedRes.json());
@@ -46,7 +47,7 @@ export default function Interests() {
 
   const handleAccept = async (connectionId) => {
     try {
-      const res = await fetch(`/api/connections/${connectionId}/accept`, { method: 'PUT' });
+      const res = await fetch(`/api/connections/${connectionId}/accept`, { method: 'PUT', ...authHeaders });
       if (res.ok) {
         fetchData();
         showToast('Interest accepted! You can now chat.', 'success');
@@ -59,7 +60,7 @@ export default function Interests() {
 
   const handleDecline = async (connectionId) => {
     try {
-      const res = await fetch(`/api/connections/${connectionId}/decline`, { method: 'PUT' });
+      const res = await fetch(`/api/connections/${connectionId}/decline`, { method: 'PUT', ...authHeaders });
       if (res.ok) {
         fetchData();
         showToast('Interest declined', 'success');
@@ -88,7 +89,7 @@ export default function Interests() {
     try {
       // Fetch full member data to populate the modal
       const memberId = user.memberId || user._id;
-      const res = await fetch(`/api/user-by-member/${memberId}`);
+      const res = await fetch(`/api/user-by-member/${memberId}`, authHeaders);
       if (res.ok) {
         const fullUser = await res.json();
         setSelectedMember({

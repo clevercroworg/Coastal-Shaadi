@@ -189,7 +189,7 @@ export default function MyProfile() {
         if (actualUserId) {
           const updateRes = await fetch('/api/profile', {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
             body: JSON.stringify({ userId: actualUserId, additionalImages: cleanedImages })
           });
           
@@ -220,7 +220,7 @@ export default function MyProfile() {
       if (actualUserId) {
         const updateRes = await fetch('/api/profile', {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
           body: JSON.stringify({ userId: actualUserId, additionalImages: newImages })
         });
         
@@ -307,7 +307,7 @@ export default function MyProfile() {
     try {
       const res = await fetch('/api/profile', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify({ userId: actualUserId, whatsappNumber, whatsappConsent })
       });
       if (!res.ok) throw new Error('Failed to save');
@@ -386,7 +386,7 @@ export default function MyProfile() {
         const { memberType, memberId, name, ...cleanEditData } = editData;
         const updateRes = await fetch('/api/profile', {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
           body: JSON.stringify({ userId: actualUserId, profileData: cleanEditData })
         });
         
@@ -464,7 +464,7 @@ export default function MyProfile() {
         if (actualUserId) {
           const updateRes = await fetch('/api/profile', {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
             body: JSON.stringify({ userId: actualUserId, image: data.secure_url })
           });
           
@@ -496,7 +496,7 @@ export default function MyProfile() {
       if (actualUserId) {
         const updateRes = await fetch('/api/profile', {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
           body: JSON.stringify({ userId: actualUserId, image: null })
         });
         

@@ -22,9 +22,10 @@ export default function DashboardNavbar() {
         if (!userProfileStr) return;
         const userProfile = JSON.parse(userProfileStr);
         const userId = userProfile.id || userProfile._id;
-        
+        const authHeaders = { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } };
+
         // Fetch Conversations for unread counts
-        const resConvs = await fetch(`/api/conversations/${userId}`);
+        const resConvs = await fetch(`/api/conversations/${userId}`, authHeaders);
         if (resConvs.ok) {
           const convs = await resConvs.json();
           const totalUnread = convs.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
@@ -32,7 +33,7 @@ export default function DashboardNavbar() {
         }
 
         // Fetch received interests for pending counts
-        const resInt = await fetch(`/api/connections/received/${userId}`);
+        const resInt = await fetch(`/api/connections/received/${userId}`, authHeaders);
         if (resInt.ok) {
           const interests = await resInt.json();
           const pending = interests.filter(int => int.status === 'pending').length;

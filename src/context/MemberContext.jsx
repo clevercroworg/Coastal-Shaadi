@@ -151,6 +151,12 @@ export const MemberProvider = ({ children }) => {
         localStorage.setItem('userProfile', JSON.stringify(latestProfile));
         setUserProfile(latestProfile);
         window.dispatchEvent(new Event('profileUpdated'));
+      } else if (response.status === 401) {
+        // Session expired: log out so the user signs in again and gets a fresh token
+        localStorage.removeItem('token');
+        localStorage.removeItem('userFilter');
+        localStorage.removeItem('userProfile');
+        window.location.href = '/login?type=login';
       }
     } catch (error) {
       console.error("Failed to sync user profile", error);

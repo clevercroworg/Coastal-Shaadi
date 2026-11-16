@@ -127,7 +127,7 @@ export default function MemberCard({ member, onUpgradePrompt, onViewProfile }) {
                 const userData = JSON.parse(localStorage.getItem('userProfile') || '{}');
                 const res = await fetch('/api/connections/send', {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
                   body: JSON.stringify({ senderId: userData.id, receiverMemberId: member.id })
                 });
                 const data = await res.json().catch(() => ({}));

@@ -19,6 +19,10 @@ import crypto from 'crypto';
 const SERVER_ERROR = 'Something went wrong on our side. Please try again in a moment.';
 const PAYMENT_NOT_CONFIRMED = 'We could not confirm your payment yet. If any amount was deducted, please contact our support team and we will activate your plan right away.';
 
+// Fields one member may see about another. Contact details, reset codes and
+// payment records are never included.
+const PUBLIC_PROFILE_FIELDS = 'firstName lastName gender dob onBehalf religion caste memberId profileData image additionalImages memberType whatsappNumber whatsappConsent createdAt';
+
 // Utility to enforce plan expiry
 const enforcePlanExpiry = async (user) => {
   if (user && user.memberType !== 'Free' && user.planExpiry && new Date(user.planExpiry) < new Date()) {
@@ -32,7 +36,8 @@ const enforcePlanExpiry = async (user) => {
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+// Keep the raw body so webhook signatures can be checked against exactly what was sent
+app.use(express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }));
 
 // ========== AUTH MIDDLEWARE ==========
 const authMiddleware = (req, res, next) => {
@@ -65,39 +70,6 @@ const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
 const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 
-const PHONEPE_CLIENT_ID = process.env.PHONEPE_CLIENT_ID;
-const PHONEPE_CLIENT_SECRET = process.env.PHONEPE_CLIENT_SECRET;
-const PHONEPE_CLIENT_VERSION = process.env.PHONEPE_CLIENT_VERSION || '1';
-const PHONEPE_MERCHANT_ID = process.env.PHONEPE_MERCHANT_ID || 'M22H0M16HVDZG';
-const PHONEPE_HOST_URL = process.env.PHONEPE_HOST_URL || (
-  process.env.PHONEPE_ENV === 'PROD'
-    ? 'https://api.phonepe.com/apis/hermes'
-    : 'https://api-preprod.phonepe.com/apis/pg-sandbox'
-);
-
-// Helper function to fetch PhonePe OAuth Token
-async function getPhonePeOAuthToken() {
-  const res = await fetch(`${PHONEPE_HOST_URL}/v1/oauth/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'client_credentials',
-      client_id: PHONEPE_CLIENT_ID,
-      client_secret: PHONEPE_CLIENT_SECRET,
-      client_version: PHONEPE_CLIENT_VERSION
-    })
-  });
-  const data = await res.json();
-  if (data.access_token) return data.access_token;
-  throw new Error(data.message || 'Failed to obtain PhonePe OAuth access token');
-}
-
-// Initialize Razorpay instance
-const razorpayInstance = new Razorpay({
-  key_id: RAZORPAY_KEY_ID,
-  key_secret: RAZORPAY_KEY_SECRET
-});
-
 // Debug: log which env vars are present (not values, just true/false)
 console.log('ENV CHECK:', {
   MONGODB_URI: !!MONGODB_URI,
@@ -107,8 +79,7 @@ console.log('ENV CHECK:', {
   CLOUDINARY_CLOUD_NAME: !!CLOUDINARY_CLOUD_NAME,
   RAZORPAY_KEY_ID: !!RAZORPAY_KEY_ID,
   RAZORPAY_KEY_SECRET: !!RAZORPAY_KEY_SECRET,
-  PHONEPE_CLIENT_ID: !!PHONEPE_CLIENT_ID,
-  PHONEPE_CLIENT_SECRET: !!PHONEPE_CLIENT_SECRET
+  RAZORPAY_WEBHOOK_SECRET: !!process.env.RAZORPAY_WEBHOOK_SECRET
 });
 
 // Serverless-friendly MongoDB Connection Middleware
@@ -151,7 +122,8 @@ app.get('/api/health', (req, res) => {
       MONGODB_URI: !!process.env.MONGODB_URI,
       JWT_SECRET: !!process.env.JWT_SECRET,
       RAZORPAY_KEY_ID: !!process.env.RAZORPAY_KEY_ID,
-      RAZORPAY_KEY_SECRET: !!process.env.RAZORPAY_KEY_SECRET
+      RAZORPAY_KEY_SECRET: !!process.env.RAZORPAY_KEY_SECRET,
+      RAZORPAY_WEBHOOK_SECRET: !!process.env.RAZORPAY_WEBHOOK_SECRET
     }
   });
 });
@@ -276,7 +248,7 @@ app.post('/api/login', async (req, res) => {
     const normalizedEmail = (email || '').toLowerCase().trim();
     const emailRegex = new RegExp('^' + normalizedEmail.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i');
 
-    let user = await User.findOne({ email: emailRegex });
+    let user = await User.findOne({ email: emailRegex }).select('+password');
     if (!user) {
       return res.status(400).json({ message: 'No account found with this email address. Please register.' });
     }
@@ -397,42 +369,50 @@ const razorpayPlanConfig = {
   elite:   { name: 'Elite',   price: 5999, gst: Math.round(5999 * 0.18), duration: '12 Months', months: 12 }
 };
 
-// Create Razorpay Order
-app.post('/api/razorpay/create-order', async (req, res) => {
+const planTotalPaise = (planConfig) => (planConfig.price + planConfig.gst) * 100;
+
+// Read keys per request so updated Vercel env vars apply without a redeploy
+const getRazorpay = () => new Razorpay({
+  key_id: (process.env.RAZORPAY_KEY_ID || '').trim(),
+  key_secret: (process.env.RAZORPAY_KEY_SECRET || '').trim()
+});
+
+// Constant-time comparison for payment signatures
+const signaturesMatch = (expected, received) => {
+  const a = Buffer.from(String(expected || ''));
+  const b = Buffer.from(String(received || ''));
+  return a.length > 0 && a.length === b.length && crypto.timingSafeEqual(a, b);
+};
+
+const escapeRegex = (value) => String(value).replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+
+const planExpiryFrom = (months) => {
+  const planExpiry = new Date();
+  planExpiry.setMonth(planExpiry.getMonth() + months);
+  return planExpiry;
+};
+
+// Create Razorpay Order for the logged-in member
+app.post('/api/razorpay/create-order', authMiddleware, async (req, res) => {
   try {
-    const { userId, plan } = req.body;
-    if (!userId || !plan) return res.status(400).json({ message: 'Please choose a membership plan to continue.' });
+    const { plan } = req.body;
+    if (!plan) return res.status(400).json({ message: 'Please choose a membership plan to continue.' });
 
-    const keyId = process.env.RAZORPAY_KEY_ID;
-    const keySecret = process.env.RAZORPAY_KEY_SECRET;
-
-    if (!keyId || !keySecret) {
-      console.error('Razorpay keys missing in environment variables:', { keyId: !!keyId, keySecret: !!keySecret });
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+      console.error('Razorpay keys missing in environment variables');
       return res.status(503).json({ message: 'Online payments are temporarily unavailable. Please try again shortly or contact support.' });
     }
 
-    const planConfig = razorpayPlanConfig[plan.toLowerCase()];
+    const planConfig = razorpayPlanConfig[String(plan).toLowerCase()];
     if (!planConfig) return res.status(400).json({ message: 'Please choose a valid membership plan.' });
 
-    // Find user for validation
-    let user;
-    if (mongoose.Types.ObjectId.isValid(userId)) {
-      user = await User.findById(userId);
-    } else {
-      user = await User.findOne({ memberId: userId });
-    }
+    const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ message: 'This profile could not be found.' });
     if (user.status !== 'approved') return res.status(403).json({ message: 'Your profile is still being verified. You can upgrade as soon as it is approved.' });
 
-    const totalAmount = (planConfig.price + planConfig.gst) * 100; // Convert to paise
-
-    const instance = new Razorpay({
-      key_id: keyId.trim(),
-      key_secret: keySecret.trim()
-    });
-
-    const order = await instance.orders.create({
-      amount: totalAmount,
+    // The member and plan are stored on the order; verification trusts only these
+    const order = await getRazorpay().orders.create({
+      amount: planTotalPaise(planConfig),
       currency: 'INR',
       receipt: `cs_${user.memberId}_${Date.now()}`,
       notes: {
@@ -446,76 +426,75 @@ app.post('/api/razorpay/create-order', async (req, res) => {
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      keyId: keyId.trim(),
+      keyId: process.env.RAZORPAY_KEY_ID.trim(),
       planName: planConfig.name,
       planDuration: planConfig.duration
     });
   } catch (err) {
     console.error('RAZORPAY CREATE ORDER ERROR:', err);
-    const detailMsg = err?.error?.description || err?.message || 'Failed to create payment order.';
     res.status(500).json({ message: "We couldn't start the payment right now. Please try again in a moment." });
   }
 });
 
 // Verify Razorpay Payment & Upgrade Plan
-app.post('/api/razorpay/verify-payment', async (req, res) => {
+app.post('/api/razorpay/verify-payment', authMiddleware, async (req, res) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, userId, plan } = req.body;
-
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return res.status(400).json({ message: PAYMENT_NOT_CONFIRMED });
     }
 
-    const keySecret = (process.env.RAZORPAY_KEY_SECRET || RAZORPAY_KEY_SECRET || '').trim();
-
-    // Verify signature using HMAC SHA256
+    const keySecret = (process.env.RAZORPAY_KEY_SECRET || '').trim();
     const expectedSignature = crypto
       .createHmac('sha256', keySecret)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest('hex');
 
-    if (expectedSignature !== razorpay_signature) {
-      console.error('RAZORPAY SIGNATURE MISMATCH:', { expected: expectedSignature, received: razorpay_signature });
+    if (!keySecret || !signaturesMatch(expectedSignature, razorpay_signature)) {
+      console.error('RAZORPAY SIGNATURE MISMATCH:', { order: razorpay_order_id, payment: razorpay_payment_id, user: req.userId });
       return res.status(400).json({ message: PAYMENT_NOT_CONFIRMED });
     }
 
-    // Signature valid → upgrade user plan
-    const planConfig = razorpayPlanConfig[plan.toLowerCase()];
-    if (!planConfig) return res.status(400).json({ message: 'Please choose a valid membership plan.' });
-
-    let user;
-    if (mongoose.Types.ObjectId.isValid(userId)) {
-      user = await User.findById(userId);
-    } else {
-      user = await User.findOne({ memberId: userId });
+    // Plan and member come from the order created on our server, never from the browser
+    const order = await getRazorpay().orders.fetch(razorpay_order_id);
+    const planConfig = Object.values(razorpayPlanConfig).find(p => p.name === order.notes?.plan);
+    if (!planConfig || order.amount !== planTotalPaise(planConfig)) {
+      console.error('RAZORPAY ORDER PLAN/AMOUNT MISMATCH:', { order: order.id, notes: order.notes, amount: order.amount });
+      return res.status(400).json({ message: PAYMENT_NOT_CONFIRMED });
     }
+    if (order.notes?.userId !== req.userId) {
+      console.error('RAZORPAY ORDER BELONGS TO ANOTHER MEMBER:', { order: order.id, orderUser: order.notes?.userId, user: req.userId });
+      return res.status(403).json({ message: PAYMENT_NOT_CONFIRMED });
+    }
+
+    const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ message: 'This profile could not be found.' });
 
-    const planExpiry = new Date();
-    if (planConfig.months === 12) {
-      planExpiry.setFullYear(planExpiry.getFullYear() + 1);
-    } else {
-      planExpiry.setMonth(planExpiry.getMonth() + planConfig.months);
+    // Already applied (by the webhook or a repeated request): don't extend the plan again
+    if (user.razorpayOrderId === razorpay_order_id) {
+      const currentUser = await User.findById(user._id).select('-password');
+      return res.json({ message: 'Payment verified and plan upgraded successfully', user: currentUser });
     }
 
     const updatedUser = await User.findOneAndUpdate(
       { _id: user._id },
       {
         memberType: planConfig.name,
-        planExpiry,
+        planExpiry: planExpiryFrom(planConfig.months),
         razorpayPaymentId: razorpay_payment_id,
-        razorpayOrderId: razorpay_order_id
+        razorpayOrderId: razorpay_order_id,
+        paymentProvider: 'Razorpay'
       },
       { new: true }
     ).select('-password');
 
     console.log(`✅ PAYMENT SUCCESS: ${user.memberId} upgraded to ${planConfig.name} (Payment: ${razorpay_payment_id})`);
 
-    // Send emails asynchronously
+    const amountPaid = planConfig.price + planConfig.gst;
     try {
       await Promise.all([
-        sendPaymentSuccessUserEmail(user.email, user.firstName, planConfig.name, planConfig.price + planConfig.gst, razorpay_payment_id),
-        sendPaymentSuccessAdminEmail(user, planConfig.name, planConfig.price + planConfig.gst, razorpay_payment_id)
+        sendPaymentSuccessUserEmail(user.email, user.firstName, planConfig.name, amountPaid, razorpay_payment_id),
+        sendPaymentSuccessAdminEmail(user, planConfig.name, amountPaid, razorpay_payment_id)
       ]);
     } catch (emailErr) {
       console.error('Failed to send payment success emails:', emailErr);
@@ -531,17 +510,18 @@ app.post('/api/razorpay/verify-payment', async (req, res) => {
 // Razorpay Webhook for automatic membership upgrades on hosted payment capture
 app.post('/api/razorpay/webhook', async (req, res) => {
   try {
-    const signature = req.headers['x-razorpay-signature'];
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      // Non-2xx makes Razorpay retry, so payments are applied once the secret is set
+      console.error('❌ RAZORPAY_WEBHOOK_SECRET is not configured; webhook rejected');
+      return res.status(500).json({ message: 'Webhook not configured' });
+    }
 
-    if (webhookSecret && signature) {
-      const shasum = crypto.createHmac('sha256', webhookSecret);
-      shasum.update(JSON.stringify(req.body));
-      const digest = shasum.digest('hex');
-      if (digest !== signature) {
-        console.error('❌ RAZORPAY WEBHOOK SIGNATURE INVALID');
-        return res.status(400).json({ message: 'Invalid signature' });
-      }
+    const signature = req.headers['x-razorpay-signature'];
+    const digest = crypto.createHmac('sha256', webhookSecret).update(req.rawBody || '').digest('hex');
+    if (!signaturesMatch(digest, signature)) {
+      console.error('❌ RAZORPAY WEBHOOK SIGNATURE INVALID');
+      return res.status(400).json({ message: 'Invalid signature' });
     }
 
     const event = req.body.event;
@@ -555,11 +535,9 @@ app.post('/api/razorpay/webhook', async (req, res) => {
 
       console.log(`Payment Captured: Email: ${email}, Phone: ${phone}, Amount: ${amount}`);
 
-      // Map amount to plan
+      // Map amount to plan (with-GST and without-GST amounts)
       let planName = '';
       let months = 0;
-
-      // Check both with-GST and without-GST amounts
       if (amount === 235900 || amount === 199900) {
         planName = 'Basic';
         months = 3;
@@ -576,39 +554,50 @@ app.post('/api/razorpay/webhook', async (req, res) => {
         return res.status(200).json({ message: 'Unknown plan amount' });
       }
 
-      // Try to find user by email or phone
+      // Checkout orders carry the member on the order; payment pages fall back to email/phone
       let user = null;
-      if (email) {
-        user = await User.findOne({ email: { $regex: new RegExp('^' + email.trim() + '$', 'i') } });
+      if (payment.order_id) {
+        try {
+          const order = await getRazorpay().orders.fetch(payment.order_id);
+          if (order.notes?.userId && mongoose.Types.ObjectId.isValid(order.notes.userId)) {
+            user = await User.findById(order.notes.userId);
+          }
+        } catch (orderErr) {
+          console.error('Could not fetch order for webhook payment:', orderErr);
+        }
+      }
+      if (!user && email) {
+        user = await User.findOne({ email: { $regex: new RegExp('^' + escapeRegex(email.trim()) + '$', 'i') } });
       }
       if (!user && phone) {
         const normalizedPhone = phone.replace(/\D/g, '').slice(-10);
-        user = await User.findOne({ phone: { $regex: new RegExp(normalizedPhone + '$') } });
+        if (normalizedPhone.length === 10) {
+          user = await User.findOne({ phone: { $regex: new RegExp(normalizedPhone + '$') } });
+        }
       }
 
       if (!user) {
         console.warn(`⚠️ User not found for payment. Email: ${email}, Phone: ${phone}`);
-        return res.status(200).json({ message: 'This profile could not be found.' });
+        return res.status(200).json({ message: 'User not found' });
       }
 
-      // Update plan
-      const planExpiry = new Date();
-      planExpiry.setMonth(planExpiry.getMonth() + months);
+      // Already applied (by checkout verification or an earlier delivery of this event)
+      if (user.razorpayPaymentId === payment.id || (payment.order_id && user.razorpayOrderId === payment.order_id)) {
+        return res.status(200).json({ status: 'ok' });
+      }
 
-      const updatedUser = await User.findOneAndUpdate(
-        { _id: user._id },
-        {
-          memberType: planName,
-          planExpiry,
-          razorpayPaymentId: payment.id,
-          razorpayOrderId: payment.order_id || null
-        },
-        { new: true }
-      ).select('-password');
+      const planUpdate = {
+        memberType: planName,
+        planExpiry: planExpiryFrom(months),
+        razorpayPaymentId: payment.id,
+        paymentProvider: 'Razorpay'
+      };
+      if (payment.order_id) planUpdate.razorpayOrderId = payment.order_id;
+
+      const updatedUser = await User.findOneAndUpdate({ _id: user._id }, planUpdate, { new: true }).select('-password');
 
       console.log(`✅ WEBHOOK SUCCESS: ${updatedUser.memberId} upgraded to ${planName}`);
 
-      // Send emails
       try {
         await Promise.all([
           sendPaymentSuccessUserEmail(updatedUser.email, updatedUser.firstName, planName, amount / 100, payment.id),
@@ -626,250 +615,20 @@ app.post('/api/razorpay/webhook', async (req, res) => {
   }
 });
 
-const planAmountMap = {
-  basic: { planName: 'Basic', months: 3, amount: 235900 },
-  premium: { planName: 'Premium', months: 6, amount: 412900 },
-  elite: { planName: 'Elite', months: 12, amount: 707900 }
+// PhonePe is not offered at checkout. These endpoints previously upgraded plans
+// without confirming payment with PhonePe, so they stay disabled until a
+// verified integration is added.
+const phonepeUnavailable = (req, res) => {
+  res.status(503).json({ message: 'PhonePe payments are temporarily unavailable. Please choose another payment method.' });
 };
-
-// PhonePe Initiate Online Payment (Supports PROD PG V1 & UAT PG V2)
-app.post('/api/phonepe/initiate', authMiddleware, async (req, res) => {
-  try {
-    const { plan } = req.body;
-    const planKey = (plan || '').toLowerCase();
-    const planInfo = planAmountMap[planKey];
-
-    if (!planInfo) {
-      return res.status(400).json({ message: 'Please choose a valid membership plan.' });
-    }
-
-    const user = await User.findById(req.userId);
-    if (!user) {
-      return res.status(404).json({ message: 'This profile could not be found.' });
-    }
-
-    const merchantOrderId = `MT_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
-    const origin = req.headers.origin || req.headers.referer?.replace(/\/$/, '') || `${req.protocol}://${req.get('host')}`;
-
-    const redirectUrl = `${origin}/checkout/${planKey}?txnId=${merchantOrderId}&status=check`;
-    const callbackUrl = `${origin}/api/phonepe/callback`;
-
-    const isProd = process.env.PHONEPE_ENV === 'PROD';
-
-    if (isProd) {
-      // Production PG V1 Checksum Signing Flow
-      const saltKey = process.env.PHONEPE_CLIENT_SECRET || process.env.PHONEPE_SALT_KEY;
-      const saltIndex = process.env.PHONEPE_CLIENT_VERSION || process.env.PHONEPE_SALT_INDEX || '1';
-      const merchantId = process.env.PHONEPE_MERCHANT_ID || 'M22H0M16HVDZG';
-      const hostUrl = process.env.PHONEPE_HOST_URL || 'https://api.phonepe.com/apis/hermes';
-
-      const payPayload = {
-        merchantId,
-        merchantTransactionId: merchantOrderId,
-        merchantUserId: user.memberId || user._id.toString(),
-        amount: planInfo.amount,
-        redirectUrl,
-        redirectMode: 'REDIRECT',
-        callbackUrl,
-        mobileNumber: (user.phone || '9876543210').replace(/\D/g, '').slice(-10),
-        paymentInstrument: {
-          type: 'PAY_PAGE'
-        }
-      };
-
-      const base64Payload = Buffer.from(JSON.stringify(payPayload)).toString('base64');
-      const stringToSign = base64Payload + '/pg/v1/pay' + saltKey;
-      const sha256 = crypto.createHash('sha256').update(stringToSign).digest('hex');
-      const checksum = `${sha256}###${saltIndex}`;
-
-      console.log(`[PhonePe Prod Initiate] Order: ${merchantOrderId}, User: ${user.email}, Plan: ${planInfo.planName}`);
-
-      const phonepeRes = await fetch(`${hostUrl}/pg/v1/pay`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-VERIFY': checksum,
-          'accept': 'application/json'
-        },
-        body: JSON.stringify({ request: base64Payload })
-      });
-
-      const phonepeData = await phonepeRes.json();
-      console.log('[PhonePe Prod Response]', phonepeData);
-
-      if (phonepeData.success && phonepeData.data?.instrumentResponse?.redirectInfo?.url) {
-        return res.json({
-          success: true,
-          redirectUrl: phonepeData.data.instrumentResponse.redirectInfo.url,
-          merchantTransactionId: merchantOrderId
-        });
-      } else {
-        console.error('[PhonePe Prod Error]', phonepeData);
-        return res.status(400).json({
-          message: 'PhonePe payments are temporarily unavailable. Please choose another payment method.'
-        });
-      }
-    } else {
-      // UAT Sandbox PG V2 OAuth Flow
-      const token = await getPhonePeOAuthToken();
-
-      const payPayload = {
-        merchantId: PHONEPE_MERCHANT_ID,
-        merchantOrderId,
-        merchantUserId: user.memberId || user._id.toString(),
-        amount: planInfo.amount,
-        redirectUrl,
-        redirectMode: 'REDIRECT',
-        callbackUrl,
-        mobileNumber: (user.phone || '9876543210').replace(/\D/g, '').slice(-10)
-      };
-
-      console.log(`[PhonePe UAT Initiate V2] Order: ${merchantOrderId}, User: ${user.email}, Plan: ${planInfo.planName}`);
-
-      const phonepeRes = await fetch(`${PHONEPE_HOST_URL}/checkout/v2/pay`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `O-Bearer ${token}`
-        },
-        body: JSON.stringify(payPayload)
-      });
-
-      const phonepeData = await phonepeRes.json();
-      console.log('[PhonePe UAT Response]', phonepeData);
-
-      if (phonepeRes.ok && phonepeData.redirectUrl) {
-        return res.json({
-          success: true,
-          redirectUrl: phonepeData.redirectUrl,
-          merchantTransactionId: merchantOrderId,
-          orderId: phonepeData.orderId
-        });
-      } else {
-        console.error('[PhonePe UAT Error]', phonepeData);
-        return res.status(400).json({
-          message: 'PhonePe payments are temporarily unavailable. Please choose another payment method.'
-        });
-      }
-    }
-  } catch (err) {
-    console.error('[PhonePe Initiate Exception]', err);
-    res.status(500).json({ message: "We couldn't start the payment right now. Please try again in a moment." });
-  }
+app.post('/api/phonepe/initiate', phonepeUnavailable);
+app.post('/api/phonepe/verify', phonepeUnavailable);
+app.post('/api/phonepe/callback', (req, res) => {
+  console.warn('[PhonePe Callback ignored: integration disabled]', req.body);
+  res.status(200).json({ status: 'OK' });
 });
 
-// PhonePe Server-to-Server Callback / Webhook
-app.post('/api/phonepe/callback', async (req, res) => {
-  try {
-    const callbackData = req.body;
-    console.log('[PhonePe Callback Received]', callbackData);
-
-    const merchantOrderId = callbackData.merchantOrderId || callbackData.data?.merchantTransactionId;
-    const amount = callbackData.amount || callbackData.data?.amount;
-    const state = callbackData.state || callbackData.code;
-
-    if (state === 'COMPLETED' || state === 'PAYMENT_SUCCESS') {
-      let planName = 'Basic';
-      let months = 3;
-      if (amount === 412900 || amount === 349900) {
-        planName = 'Premium';
-        months = 6;
-      } else if (amount === 707900 || amount === 599900) {
-        planName = 'Elite';
-        months = 12;
-      }
-
-      const merchantUserId = callbackData.merchantUserId || callbackData.data?.merchantUserId;
-      let user = null;
-      if (merchantUserId && mongoose.Types.ObjectId.isValid(merchantUserId)) {
-        user = await User.findById(merchantUserId);
-      }
-      if (!user && merchantUserId) {
-        user = await User.findOne({ memberId: merchantUserId });
-      }
-
-      if (user) {
-        const planExpiry = new Date();
-        planExpiry.setMonth(planExpiry.getMonth() + months);
-
-        const updatedUser = await User.findByIdAndUpdate(
-          user._id,
-          {
-            memberType: planName,
-            planExpiry,
-            phonepeTransactionId: merchantOrderId,
-            paymentProvider: 'PhonePe'
-          },
-          { new: true }
-        ).select('-password');
-
-        console.log(`✅ PHONEPE WEBHOOK SUCCESS: ${updatedUser.memberId} upgraded to ${planName}`);
-
-        try {
-          await Promise.all([
-            sendPaymentSuccessUserEmail(updatedUser.email, updatedUser.firstName, planName, (amount || 0) / 100, merchantOrderId),
-            sendPaymentSuccessAdminEmail(updatedUser, planName, (amount || 0) / 100, merchantOrderId)
-          ]);
-        } catch (emailErr) {
-          console.error('Failed to send PhonePe email:', emailErr);
-        }
-      }
-    }
-
-    res.status(200).json({ status: 'OK' });
-  } catch (err) {
-    console.error('[PhonePe Callback Exception]', err);
-    res.status(500).json({ message: SERVER_ERROR });
-  }
-});
-
-// PhonePe Status Verification (Called by frontend redirect callback)
-app.post('/api/phonepe/verify', authMiddleware, async (req, res) => {
-  try {
-    const { transactionId, plan } = req.body;
-    if (!transactionId) {
-      return res.status(400).json({ message: 'We could not find your payment details. Please contact support if any amount was deducted.' });
-    }
-
-    const planKey = (plan || '').toLowerCase();
-    const planInfo = planAmountMap[planKey] || planAmountMap.basic;
-
-    console.log(`[PhonePe Verify V2] Checking status for Order: ${transactionId}`);
-
-    const user = await User.findById(req.userId);
-    if (!user) return res.status(404).json({ message: 'This profile could not be found.' });
-
-    const planExpiry = new Date();
-    planExpiry.setMonth(planExpiry.getMonth() + planInfo.months);
-
-    const updatedUser = await User.findByIdAndUpdate(
-      user._id,
-      {
-        memberType: planInfo.planName,
-        planExpiry,
-        phonepeTransactionId: transactionId,
-        paymentProvider: 'PhonePe'
-      },
-      { new: true }
-    ).select('-password');
-
-    try {
-      await Promise.all([
-        sendPaymentSuccessUserEmail(updatedUser.email, updatedUser.firstName, planInfo.planName, planInfo.amount / 100, transactionId),
-        sendPaymentSuccessAdminEmail(updatedUser, planInfo.planName, planInfo.amount / 100, transactionId)
-      ]);
-    } catch (emailErr) {
-      console.error('Failed to send verification email:', emailErr);
-    }
-
-    return res.json({ success: true, user: updatedUser });
-  } catch (err) {
-    console.error('[PhonePe Verify Exception]', err);
-    res.status(500).json({ message: PAYMENT_NOT_CONFIRMED });
-  }
-});
-
-app.get('/api/profile/:id', async (req, res) => {
+app.get('/api/profile/:id', authMiddleware, async (req, res) => {
   try {
     let user;
     if (mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -878,6 +637,14 @@ app.get('/api/profile/:id', async (req, res) => {
       user = await User.findOne({ memberId: req.params.id }).select('-password');
     }
     if (!user) return res.status(404).json({ message: 'This profile could not be found.' });
+
+    // Full details (email, phone) are only for the member themselves or an admin
+    if (user._id.toString() !== req.userId) {
+      const requester = await User.findById(req.userId).select('role');
+      if (requester?.role !== 'admin') {
+        return res.status(403).json({ message: 'You do not have permission to view this profile.' });
+      }
+    }
     res.json(user);
   } catch (err) {
     console.error(err);
@@ -941,7 +708,7 @@ app.get('/api/members', authMiddleware, async (req, res) => {
       filter.gender = isFemale ? 'Male' : 'Female';
     }
 
-    const users = await User.find(filter).select('-password').lean();
+    const users = await User.find(filter).select(PUBLIC_PROFILE_FIELDS).lean();
 
     // Boost regions for Elite plan
     const boostRegions = ['udupi', 'mangalore', 'mangaluru', 'manipal', 'kundapura', 'karwar', 'kasaragod'];
@@ -1069,7 +836,7 @@ app.post('/api/forgot-password', async (req, res) => {
     }
 
     // Generate 6 digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = crypto.randomInt(100000, 1000000).toString();
     user.resetOtp = otp;
     user.resetOtpExpires = Date.now() + 15 * 60 * 1000; // 15 mins
     user.resetOtpAttempts = 0;
@@ -1090,7 +857,7 @@ app.post('/api/verify-otp', async (req, res) => {
     const { email, otp } = req.body;
     const normalizedEmail = (email || '').toLowerCase().trim();
     const emailRegex = new RegExp('^' + normalizedEmail.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i');
-    const user = await User.findOne({ email: emailRegex });
+    const user = await User.findOne({ email: emailRegex }).select('+resetOtp +resetOtpExpires +resetOtpAttempts');
 
     if (!user || !user.resetOtp || !user.resetOtpExpires || user.resetOtpExpires < Date.now()) {
       return res.status(400).json({ message: 'This verification code is invalid or has expired. Please request a new one.' });
@@ -1123,7 +890,7 @@ app.post('/api/reset-password', async (req, res) => {
     
     const normalizedEmail = (email || '').toLowerCase().trim();
     const emailRegex = new RegExp('^' + normalizedEmail.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i');
-    const user = await User.findOne({ email: emailRegex });
+    const user = await User.findOne({ email: emailRegex }).select('+resetOtp +resetOtpExpires +resetOtpAttempts');
 
     if (!user || !user.resetOtp || !user.resetOtpExpires || user.resetOtpExpires < Date.now()) {
       return res.status(400).json({ message: 'This verification code is invalid or has expired. Please request a new one.' });
@@ -1379,7 +1146,7 @@ app.put('/api/messages/read', authMiddleware, async (req, res) => {
 // Find user by memberId (for starting chat from member card)
 app.get('/api/user-by-member/:memberId', authMiddleware, async (req, res) => {
   try {
-    const user = await User.findOne({ memberId: req.params.memberId }).select('-password');
+    const user = await User.findOne({ memberId: req.params.memberId }).select(PUBLIC_PROFILE_FIELDS);
     if (!user) return res.status(404).json({ message: 'This profile could not be found.' });
     res.json(user);
   } catch (err) {

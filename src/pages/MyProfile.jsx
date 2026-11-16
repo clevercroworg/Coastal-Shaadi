@@ -270,7 +270,9 @@ export default function MyProfile() {
     const actualUserId = userData?.id || userData?._id || userData?.memberId;
     if (!actualUserId) return;
     try {
-      const res = await fetch(`/api/profile/${actualUserId}`);
+      const res = await fetch(`/api/profile/${actualUserId}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
       if (res.ok) {
         let latestUser;
         try { latestUser = await res.json(); } catch { return; }
